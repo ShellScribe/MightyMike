@@ -1,0 +1,44 @@
+PASS: test isolation (disconnect physical controllers for smoke tests)
+PASS: attach virtual SDL gamepad
+PASS: open virtual joystick
+PASS: attach virtual SDL gamepad
+PASS: open virtual joystick
+PASS: two independently assigned gamepads
+PASS: stable controller slots
+PASS: two real Pete objects
+PASS: clear test patch in first level
+PASS: set virtual axis
+PASS: P1 moves while P2 remains still
+PASS: set virtual axis
+PASS: P2 moves while P1 remains still
+PASS: set virtual axis
+PASS: set virtual axis
+PASS: set virtual axis
+PASS: set virtual axis
+PASS: independent simultaneous aiming
+PASS: both fire with separate ammo
+PASS: real projectiles retain each shooter's direction
+PASS: real enemy available for combat check
+PASS: both players' projectiles damage the shared enemy
+PASS: open smoke screenshot
+PASS: player context restored after object updates
+PASS: damage leaves partner health intact
+PASS: death animation and partner revival consume one team spare
+PASS: survivor remains playable
+PASS: set virtual axis
+PASS: set virtual axis
+PASS: shared-camera tether bounds separation
+PASS: player visible in shared camera
+PASS: player visible in shared camera
+PASS: spawn final test objective
+PASS: objective references a real map item
+PASS: either player completes shared bunny objective
+PASS: real liftoff animation completes level
+PASS: next level creates both players and fresh objectives
+PASS: game ends only when both die without a spare
+PASS: disconnect P1 keeps P2 assigned to P2
+PASS: reconnect fills vacant slot without reassigning partner
+PASS: original single-player starts with one Pete
+PASS: set virtual axis
+PASS: original single-player movement
+COOP SMOKE PASSED (SDL virtual controllers; human play unverified)

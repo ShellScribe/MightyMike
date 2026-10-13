@@ -24,6 +24,7 @@
 #include "infobar.h"
 #include "input.h"
 #include "externs.h"
+#include "coop.h"
 #include "weapon.h"
 #include "font.h"
 
@@ -1727,6 +1728,8 @@ short	selection;
 	}
 
 				/* DO SAVE SELECTION */
+
+	if (gCoopEnabled) goto bye; // Co-op runs do not have a compatible save format.
 
 	PresentIndexedFramebuffer();
 	Wait4(60*1);

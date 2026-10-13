@@ -13,6 +13,7 @@
 #include "infobar.h"
 #include "window.h"
 #include "objecttypes.h"
+#include "shape.h"
 
 extern ObjNode* gRealMePtr;
 extern short gMyGunDrawnTimer;
@@ -94,7 +95,7 @@ void CoopInitArea(void)
  gCoopPlayers[1].doneDead = false;
  if (gHavePlayers)
  {
-  gCoopPlayers[1].gMyHealth = previous.gMyHealth;
+  gCoopPlayers[1].gMyHealth = previous.gMyHealth < 0 ? previous.gMyMaxHealth : previous.gMyHealth;
   gCoopPlayers[1].gMyMaxHealth = previous.gMyMaxHealth;
   gCoopPlayers[1].gCurrentWeaponType = previous.gCurrentWeaponType;
   gCoopPlayers[1].gCurrentWeaponIndex = previous.gCurrentWeaponIndex;
@@ -286,9 +287,12 @@ void CoopDrawOverlay(void)
    if (h >= s->gMyHealth || IsDead(p)) Box(x+23+h*14, y+1, 9, 8, dark);
   }
   ObjNode* node = s->gMyNodePtr;
-  int markerX = PF_WINDOW_LEFT + node->drawBox.left - OFFSCREEN_WINDOW_LEFT - PF_WINDOW_LEFT;
-  int markerY = node->drawBox.top - OFFSCREEN_WINDOW_TOP - 13;
-  if (node->DrawFlag && !IsDead(p))
+  int32_t spriteX, spriteY;
+  TweenObjectPosition(node, &spriteX, &spriteY);
+  const FrameHeader* frame = GetFrameHeader(node->SpriteGroupNum, node->Type, node->CurrentFrame, NULL, NULL);
+  int markerX = PF_WINDOW_LEFT + spriteX - gTweenedScrollX + (p ? 8 : -24);
+  int markerY = PF_WINDOW_TOP + spriteY - gTweenedScrollY + frame->y - 13;
+  if (node->DrawFlag && !IsDead(p) && markerY >= PF_WINDOW_TOP + 25)
   {
    Box(markerX-1, markerY-1, 17, 12, dark);
    Label(markerX, markerY, p, white);

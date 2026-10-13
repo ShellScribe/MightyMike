@@ -82,7 +82,13 @@ static void Boot(int argc, char** argv)
 {
 	const char* executablePath = argc > 0 ? argv[0] : NULL;
 	for (int i = 1; i < argc; i++)
+	{
 		if (0 == strcmp(argv[i], "--coop")) gCoopEnabled = true;
+#ifdef COOP_SMOKE_TESTS
+		if (0 == strcmp(argv[i], "--coop-smoke"))
+			gRunCoopSmokeTests = gCoopEnabled = true;
+#endif
+	}
 
 	SDL_SetAppMetadata(GAME_FULL_NAME, GAME_VERSION, GAME_IDENTIFIER);
 #if _DEBUG
@@ -126,6 +132,9 @@ static void Boot(int argc, char** argv)
 	// Init joystick subsystem
 	{
 		SDL_Init(SDL_INIT_GAMEPAD);
+#ifdef COOP_SMOKE_TESTS
+		if (gRunCoopSmokeTests) CoopAttachTestControllers();
+#endif
 		auto gamecontrollerdbPath8 = (dataPath / "System" / "gamecontrollerdb.txt").u8string();
 		if (-1 == SDL_AddGamepadMappingsFromFile((const char*)gamecontrollerdbPath8.c_str()))
 		{

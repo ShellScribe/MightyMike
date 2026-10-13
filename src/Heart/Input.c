@@ -384,7 +384,7 @@ SDL_Gamepad* TryOpenGamepad(bool showMessage)
  {
   if ((gSDLGamepad && SDL_GetGamepadID(gSDLGamepad) == ids[i])
    || (gSecondGamepad && SDL_GetGamepadID(gSecondGamepad) == ids[i])) continue;
-  SDL_Gamepad** slot = !gSDLGamepad ? &gSDLGamepad : !gSecondGamepad ? &gSecondGamepad : NULL;
+  SDL_Gamepad** slot = !gSDLGamepad ? &gSDLGamepad : gCoopEnabled && !gSecondGamepad ? &gSecondGamepad : NULL;
   if (!slot) break;
   *slot = SDL_OpenGamepad(ids[i]);
   if (*slot) SDL_Log("P%d controller: %s", slot == &gSDLGamepad ? 1 : 2, SDL_GetGamepadName(*slot));
@@ -404,7 +404,9 @@ static void OnJoystickRemoved(SDL_JoystickID which)
   SDL_memset(&gPlayerInputs[p], 0, sizeof(PlayerInput));
   if (p == 0 && gSDLHaptic) { SDL_CloseHaptic(gSDLHaptic); gSDLHaptic = NULL; }
  }
- TryOpenGamepad(false); // Existing slots never migrate to the other player.
+ if (!gCoopEnabled && !gSDLGamepad && gSecondGamepad)
+ { gSDLGamepad = gSecondGamepad; gSecondGamepad = NULL; }
+ TryOpenGamepad(false); // Existing co-op slots never migrate to the other player.
 }
 
 int32_t GetLeftStickMagnitude_Fix32(void)

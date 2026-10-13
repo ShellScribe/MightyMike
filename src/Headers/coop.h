@@ -67,3 +67,9 @@ void CoopTagObject(ObjNode* node);
 void CoopDrawOverlay(void);
 bool CoopSetDeathFlag(ObjNode* node);
 void CoopCameraCenter(long* x, long* y);
+
+#ifdef COOP_SMOKE_TESTS
+extern bool gRunCoopSmokeTests;
+void CoopAttachTestControllers(void);
+void CoopRunSmokeTests(void);
+#endif

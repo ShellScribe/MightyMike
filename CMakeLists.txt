@@ -121,6 +121,12 @@ endif()
 
 add_executable(${GAME_TARGET} ${GAME_SOURCES})
 
+option(COOP_SMOKE_TESTS "Include SDL virtual-controller gameplay smoke tests" OFF)
+if(COOP_SMOKE_TESTS)
+ target_sources(${GAME_TARGET} PRIVATE tests/CoopSmoke.c)
+ target_compile_definitions(${GAME_TARGET} PRIVATE COOP_SMOKE_TESTS=1)
+endif()
+
 target_include_directories(${GAME_TARGET} PRIVATE ${GAME_SRCDIR}/Headers)
 
 #------------------------------------------------------------------------------
@@ -287,6 +293,14 @@ add_custom_command(TARGET ${GAME_TARGET} POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E copy_directory "${GAME_DATADIR}" "${GAME_DATA_TARGET_LOCATION}")
 
 if(APPLE)
+	# The Xcode generator embeds SDL itself. Support Command Line Tools builds too.
+	if(NOT CMAKE_GENERATOR STREQUAL "Xcode" AND EXISTS "${CMAKE_SOURCE_DIR}/extern/SDL3.framework")
+		set_property(TARGET ${GAME_TARGET} APPEND PROPERTY BUILD_RPATH "@executable_path/../Frameworks")
+		add_custom_command(TARGET ${GAME_TARGET} POST_BUILD
+			COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${GAME_TARGET}>/../Frameworks"
+			COMMAND /usr/bin/ditto "${CMAKE_SOURCE_DIR}/extern/SDL3.framework"
+				"$<TARGET_FILE_DIR:${GAME_TARGET}>/../Frameworks/SDL3.framework")
+	endif()
 	set(INFO_PLIST "${GAME_DATA_TARGET_LOCATION}/../Info.plist")
 
 	add_custom_command(TARGET ${GAME_TARGET} POST_BUILD

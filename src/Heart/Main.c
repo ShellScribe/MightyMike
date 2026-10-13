@@ -1391,6 +1391,14 @@ void GameMain(void)
 
 	InitDefaultPrefs();
 	LoadPrefs();
+#ifdef COOP_SMOKE_TESTS
+	if (gRunCoopSmokeTests)
+	{
+		gGamePrefs.displayMode = kDisplayMode_Windowed;
+		gGamePrefs.pfSize = PFSIZE_WIDE;
+		SDL_memcpy(gGamePrefs.keys, kDefaultKeyBindings, sizeof(kDefaultKeyBindings));
+	}
+#endif
 	ApplyPrefs();
 	MakeGameWindow();	// now called by ApplyPrefs
 
@@ -1422,6 +1430,14 @@ void GameMain(void)
 	PlayArea();
 #endif
 
+#ifdef COOP_SMOKE_TESTS
+	if (gRunCoopSmokeTests)
+	{
+		CoopRunSmokeTests();
+		CleanQuit();
+		return;
+	}
+#endif
 	if (gCoopEnabled)
 	{
 		gDemoMode = DEMO_MODE_OFF;
