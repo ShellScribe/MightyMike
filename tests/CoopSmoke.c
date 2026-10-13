@@ -240,10 +240,13 @@ void CoopRunSmokeTests(void)
  Tick(300);
  Check(gFinishedArea, "real liftoff animation completes level");
  gIsInGame = false;
+ gMyHealth = gCoopPlayers[0].gMyHealth = -1;
+ gCoopPlayers[1].gMyHealth = -1;
  gAreaNum = 1;
  InitArea();
  Check(gCoopPlayers[0].gMyNodePtr->CoopOwner == 1 && gCoopPlayers[1].gMyNodePtr->CoopOwner == 2
-  && gNumBunnies > 0 && !gFinishedArea, "next level creates both players and fresh objectives");
+  && gCoopPlayers[0].gMyHealth > 0 && gCoopPlayers[1].gMyHealth > 0
+  && gNumBunnies > 0 && !gFinishedArea, "next level creates healthy players and fresh objectives");
  // Test game-over with no team spares, without entering high-score UI.
  gIsInGame = true;
  gNumLives = 1;

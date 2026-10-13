@@ -14,7 +14,7 @@ Host: Apple Silicon macOS; Apple Clang 21; CMake 4.4.4; SDL 3.2.2.
   direction; both projectiles damaging one enemy; restoration of player globals;
   independent damage; death animation and revival spending one shared spare;
   survivor continuity; tether and camera visibility; last-bunny collection and
-  both exit animations; level completion; second-level setup; team game-over;
+  both exit animations; level completion; second-level setup restoring both fallen players to health; team game-over;
   stable controller assignment across disconnect/reconnect; and original
   single-player initialization and movement.
 - **Visual inspection:** rendered first-level frame shows both Petes, P1/P2

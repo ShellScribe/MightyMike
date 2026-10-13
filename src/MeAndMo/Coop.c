@@ -80,6 +80,7 @@ void CoopInitArea(void)
 {
  if (!gCoopEnabled) return;
  PlayerState previous = gCoopPlayers[1];
+ if (gMyHealth < 0) gMyHealth = gMyMaxHealth; // fallen P1 rejoins at a new level
  gMyDX = gMyDY = gMySumDX = gMySumDY = 0;
  gMyGunDrawnTimer = 0;
  gLastNonDeathX = gMyX;

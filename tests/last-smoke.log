@@ -34,7 +34,7 @@ PASS: spawn final test objective
 PASS: objective references a real map item
 PASS: either player completes shared bunny objective
 PASS: real liftoff animation completes level
-PASS: next level creates both players and fresh objectives
+PASS: next level creates healthy players and fresh objectives
 PASS: game ends only when both die without a spare
 PASS: disconnect P1 keeps P2 assigned to P2
 PASS: reconnect fills vacant slot without reassigning partner
