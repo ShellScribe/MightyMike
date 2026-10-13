@@ -18,6 +18,7 @@
 #include "misc.h"
 #include "input.h"
 #include "externs.h"
+#include "coop.h"
 #include "renderdrivers.h"
 #include "version.h"
 
@@ -464,6 +465,8 @@ void PresentIndexedFramebuffer(void)
 
 	//-------------------------------------------------------------------------
 	// Present framebuffer
+
+	CoopDrawOverlay();
 
 #if GLRENDER
 	GLRender_PresentFramebuffer();

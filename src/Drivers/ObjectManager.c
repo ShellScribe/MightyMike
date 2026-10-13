@@ -15,6 +15,7 @@
 #include "misc.h"
 #include "shape.h"
 #include "externs.h"
+#include "coop.h"
 
 /****************************/
 /*    CONSTANTS             */
@@ -232,6 +233,7 @@ int numNodesToMove = 0;
 		if (node->CType == INVALID_NODE_FLAG)		// node was deleted by another node's move routine
 			continue;
 
+		CoopBeginObject(node);
 		if (node->MoveFlag && node->MoveCall != nil)
 		{
 			gThisNodePtr = node;					// set current object node
@@ -247,12 +249,17 @@ int numNodesToMove = 0;
 			node->MoveCall();						// call object's move routine
 
 			if (node->CType == INVALID_NODE_FLAG)	// move routine may have caused object to kill itself
+			{
+				CoopEndObject();
 				continue;
+			}
 		}
 
 		if (node->AnimFlag)
 			AnimateASprite(node);					// animate the sprite
+		CoopEndObject();
 	}
+	CoopEndFrame();
 }
 
 

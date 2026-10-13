@@ -22,6 +22,7 @@
 #include "input.h"
 #include "structures.h"
 #include "externs.h"
+#include "coop.h"
 
 /****************************/
 /*    CONSTANTS             */
@@ -133,6 +134,7 @@ void InitHealth(void)
 
 void ShowHealth(void)
 {
+	if (gCoopEnabled) return;
 long	i,x,y;
 
 	if (gMyHealth < 0)						// if negative, then I'm dead
@@ -290,6 +292,7 @@ void ShowLives(void)
 
 void ShowWeaponIcon(void)
 {
+	if (gCoopEnabled && gCoopActivePlayer == 1) return;
 	if (gCurrentWeaponType == NO_WEAPON)					// see if blank
 	{
 		EraseWeaponIcon();
@@ -338,6 +341,7 @@ Rect	r;
 
 void ShowWeaponLife(void)
 {
+	if (gCoopEnabled && gCoopActivePlayer == 1) return;
 	if (gGamePrefs.pfSize != PFSIZE_SMALL)
 		PrintNum(gMyWeapons[gCurrentWeaponIndex].life,
 				 3,WEAPON_LIFE_Xf+gInfobarXAdjust,WEAPON_LIFE_Yf+gInfobarYAdjust);

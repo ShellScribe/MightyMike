@@ -21,6 +21,7 @@
 #include "playfield.h"
 #include "input.h"
 #include "externs.h"
+#include "coop.h"
 
 /****************************/
 /*    CONSTANTS             */
@@ -65,6 +66,7 @@ void TurnMeIntoFrog(void)
 	if (gMyNodePtr == nil)
 		DoFatalAlert("Couldnt init Frog!");
 
+	CoopTagObject(gMyNodePtr);
 	gMyNodePtr->TopOff = gRealMePtr->TopOff;		// set box
 	gMyNodePtr->BottomOff = gRealMePtr->BottomOff;
 	gMyNodePtr->LeftOff = gRealMePtr->LeftOff;
@@ -127,7 +129,7 @@ static	void(*myMoveTable[])(void) =
 		return;
 	}
 
-	if (gEnemyFreezeTimer)								// update enemy freeze timer
+	if (gEnemyFreezeTimer && (!gCoopEnabled || gCoopActivePlayer == 0))								// update enemy freeze timer
 		gEnemyFreezeTimer--;
 
 	if (gTeleportingFlag)								// lock me while teleporting
@@ -248,6 +250,7 @@ void TurnMeIntoShip(ObjNode	*shipNode)
 
 			/* MAKE FROG OBJECT */
 
+	CoopTagObject(shipNode);
 	gMyNodePtr = shipNode;							// ship is now me
 
 	gMyNormalMaxSpeed = SPACESHIP_SPEED;				// reset normal speed
@@ -294,7 +297,7 @@ void MoveMeSpaceShip(void)
 		return;
 	}
 
-	if (gEnemyFreezeTimer)								// update enemy freeze timer
+	if (gEnemyFreezeTimer && (!gCoopEnabled || gCoopActivePlayer == 0))								// update enemy freeze timer
 		gEnemyFreezeTimer--;
 
 	if (gTeleportingFlag)								// lock me while teleporting

@@ -27,6 +27,7 @@
 #include "collision.h"
 #include "input.h"
 #include "externs.h"
+#include "coop.h"
 #include "tga.h"
 
 /****************************/
@@ -640,6 +641,7 @@ void StartShield(void)
 		SwitchAnim(gShieldNodePtr,0);				// make sure its normal if already had one
 	}
 
+	CoopTagObject(gShieldNodePtr);
 	gShieldTimer = SHIELD_DURATION;		// set duration
 }
 

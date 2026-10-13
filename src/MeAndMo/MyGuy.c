@@ -27,6 +27,7 @@
 #include "collision.h"
 #include "input.h"
 #include "externs.h"
+#include "coop.h"
 
 /****************************/
 /*    CONSTANTS             */
@@ -309,7 +310,7 @@ static	void(*myMoveTable[])(void) =
 		}
 	}
 
-	if (gEnemyFreezeTimer)								// update enemy freeze timer
+	if (gEnemyFreezeTimer && (!gCoopEnabled || gCoopActivePlayer == 0))								// update enemy freeze timer
 		gEnemyFreezeTimer--;
 
 	if (gTeleportingFlag)								// lock me while teleporting
@@ -515,9 +516,10 @@ void MoveMe_Liftoff(void)
 
 						/* ATTACK FLAME */
 
-			MakeNewShape(GroupNum_MyGuy,ObjType_MyGuy,MY_ANIMBASE_FLAME,
+			ObjNode* flame = MakeNewShape(GroupNum_MyGuy,ObjType_MyGuy,MY_ANIMBASE_FLAME,
 								gMyNodePtr->X.Int,gMyNodePtr->Y.Int,
 								gMyNodePtr->Z-1,MoveMyFlame,PLAYFIELD_RELATIVE);
+			CoopTagObject(flame);
 
 						/* PUT SHADOW UNDER ME */
 
@@ -545,6 +547,7 @@ void DoMyMove(void)
 
 	gX.L += gSumDX;										// do the move
 	gY.L += gSumDY;
+	CoopLimitMove();
 }
 
 
@@ -1061,7 +1064,7 @@ void UpdateMe_NoBlinkie(void)
 
 Boolean CalcMyAim(void)
 {
-static	Byte	oldDirection;
+short oldDirection = gMyDirection;
 
 	MoveMyController();									// handle user control & friction
 

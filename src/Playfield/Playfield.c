@@ -27,6 +27,7 @@
 #include "enemy5.h"
 #include "racecar.h"
 #include "externs.h"
+#include "coop.h"
 
 /****************************/
 /*    CONSTANTS             */
@@ -895,6 +896,7 @@ void DoMyScreenScroll(void)
 long	screenX,screenY;
 long	scrollDX, scrollDY;
 
+	if (gCoopEnabled && gCoopActivePlayer >= 0) return;
 	gOldScrollX = gScrollX;
 	gOldScrollY = gScrollY;
 
@@ -907,6 +909,15 @@ long	scrollDX, scrollDY;
 
 	screenX = gMyNodePtr->X.Int-gScrollX;					// calc screen coords
 	screenY = gMyNodePtr->Y.Int-gScrollY;
+	if (gCoopEnabled && gCoopReady)
+	{
+		long centerX, centerY;
+		CoopCameraCenter(&centerX, &centerY);
+		screenX = centerX - gScrollX;
+		screenY = centerY - gScrollY;
+		gViewWindow.left = gViewWindow.right = PF_WINDOW_WIDTH / 2;
+		gViewWindow.top = gViewWindow.bottom = PF_WINDOW_HEIGHT / 2;
+	}
 
 	if (screenX < gViewWindow.left)							// see if scroll to left
 	{

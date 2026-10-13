@@ -19,6 +19,7 @@
 #include "window.h"
 #include "structures.h"
 #include "externs.h"
+#include "coop.h"
 
 /**********************/
 /*     PROTOTYPES     */
@@ -31,6 +32,34 @@ Byte				gRawKeyboardState[SDL_SCANCODE_COUNT];
 char				gTextInput[64];
 
 Byte				gNeedStates[NUM_CONTROL_NEEDS];
+
+PlayerInput gPlayerInputs[2];
+static SDL_Gamepad* gSecondGamepad;
+static Byte gSecondNeedStates[NUM_CONTROL_NEEDS];
+static int gInputPlayer = -1;
+static int32_t ReadStickMagnitude(SDL_Gamepad* pad);
+static short ReadStickAim(SDL_Gamepad* pad);
+void SetInputPlayer(int player) { gInputPlayer = player; }
+SDL_Gamepad* GetPlayerGamepad(int player) { return player == 0 ? gSDLGamepad : gSecondGamepad; }
+
+static bool ReadGamepadNeed(SDL_Gamepad* pad, int need)
+{
+ if (!pad) return false;
+ const KeyBinding* kb = &gGamePrefs.keys[need];
+ int deadZone = need >= NUM_REMAPPABLE_NEEDS ? 21626 : 10813;
+ bool down = false;
+ for (int j = 0; j < KEYBINDING_MAX_GAMEPAD_BUTTONS; j++)
+ {
+  int id = kb->gamepad[j].id;
+  switch (kb->gamepad[j].type)
+  {
+   case kButton: down |= SDL_GetGamepadButton(pad, id); break;
+   case kAxisPlus: down |= SDL_GetGamepadAxis(pad, id) > deadZone; break;
+   case kAxisMinus: down |= SDL_GetGamepadAxis(pad, id) < -deadZone; break;
+  }
+ }
+ return down;
+}
 
 static void ParseAltEnter(void);
 static void OnJoystickRemoved(SDL_JoystickID which);
@@ -234,6 +263,16 @@ void UpdateInput(void)
 		}
 
 		UpdateKeyState(&gNeedStates[i], downNow);
+		UpdateKeyState(&gSecondNeedStates[i], ReadGamepadNeed(gSecondGamepad, i));
+		gPlayerInputs[0].held[i] = (gNeedStates[i] & KEYSTATE_ACTIVE_BIT) != 0;
+		gPlayerInputs[0].pressed[i] = gNeedStates[i] == KEYSTATE_DOWN;
+		gPlayerInputs[1].held[i] = (gSecondNeedStates[i] & KEYSTATE_ACTIVE_BIT) != 0;
+		gPlayerInputs[1].pressed[i] = gSecondNeedStates[i] == KEYSTATE_DOWN;
+	}
+	for (int p = 0; p < 2; p++)
+	{
+		gPlayerInputs[p].moveMagnitude = ReadStickMagnitude(GetPlayerGamepad(p));
+		gPlayerInputs[p].aim = ReadStickAim(GetPlayerGamepad(p));
 	}
 }
 
@@ -241,6 +280,8 @@ void ClearInput(void)
 {
 	SDL_memset(gRawKeyboardState, KEYSTATE_HELD, sizeof(gRawKeyboardState));
 	SDL_memset(gNeedStates, KEYSTATE_HELD, sizeof(gNeedStates));
+	SDL_memset(gSecondNeedStates, KEYSTATE_HELD, sizeof(gSecondNeedStates));
+	SDL_memset(gPlayerInputs, 0, sizeof(gPlayerInputs));
 //	ClearMouseState();
 //	EatMouseEvents();
 }
@@ -303,12 +344,18 @@ bool GetSDLKeyState(SDL_Scancode sdlScanCode)
 bool GetNeedState(int needID)
 {
 	GAME_ASSERT(needID < NUM_CONTROL_NEEDS);
+	if (gInputPlayer >= 0) return gPlayerInputs[gInputPlayer].held[needID];
+	if (gCoopEnabled && needID >= NUM_REMAPPABLE_NEEDS)
+		return (gNeedStates[needID] | gSecondNeedStates[needID]) & KEYSTATE_ACTIVE_BIT;
 	return 0 != (gNeedStates[needID] & KEYSTATE_ACTIVE_BIT);
 }
 
 bool GetNewNeedState(int needID)
 {
 	GAME_ASSERT(needID < NUM_CONTROL_NEEDS);
+	if (gInputPlayer >= 0) return gPlayerInputs[gInputPlayer].pressed[needID];
+	if (gCoopEnabled && (needID >= NUM_REMAPPABLE_NEEDS || needID == kNeed_Radar))
+		return gNeedStates[needID] == KEYSTATE_DOWN || gSecondNeedStates[needID] == KEYSTATE_DOWN;
 	return gNeedStates[needID] == KEYSTATE_DOWN;
 }
 
@@ -330,118 +377,75 @@ bool IsCmdQPressed(void)
 
 SDL_Gamepad* TryOpenGamepad(bool showMessage)
 {
-	if (gSDLGamepad)
-	{
-		SDL_Log("Already have a valid gamepad.");
-		return gSDLGamepad;
-	}
-
-	int numJoysticks = 0;
-	SDL_JoystickID* joysticks = SDL_GetJoysticks(&numJoysticks);
-
-	for (int i = 0; i < numJoysticks && gSDLGamepad == NULL; i++)
-	{
-		SDL_JoystickID joystickID = joysticks[i];
-		if (SDL_IsGamepad(joystickID))
-		{
-			gSDLGamepad = SDL_OpenGamepad(joystickID);
-			if (gSDLGamepad)
-				GAME_ASSERT(SDL_GetGamepadID(gSDLGamepad) == joystickID);
-		}
-	}
-
-	SDL_free(joysticks);
-	joysticks = NULL;
-
-	if (numJoysticks == 0)
-	{
-		return NULL;
-	}
-
-	if (!gSDLGamepad)
-	{
-		SDL_Log("Joystick(s) found, but none is suitable as an SDL_Gamepad.");
-		if (showMessage)
-		{
-			char messageBuf[1024];
-			SDL_snprintf(messageBuf, sizeof(messageBuf),
-				"The game does not support your controller yet (\"%s\").\n\n"
-				"You can play with the keyboard instead. Sorry!",
-				SDL_GetJoystickNameForID(0));
-			SDL_ShowSimpleMessageBox(
-				SDL_MESSAGEBOX_WARNING,
-				"Controller not supported",
-				messageBuf,
-				gSDLWindow);
-		}
-		return NULL;
-	}
-
-	SDL_Log("Opened joystick %d as controller: %s", SDL_GetGamepadID(gSDLGamepad), SDL_GetGamepadName(gSDLGamepad));
-
-	gSDLHaptic = SDL_OpenHapticFromJoystick(SDL_GetGamepadJoystick(gSDLGamepad));
-	if (gSDLHaptic)
-	{
-		SDL_InitHapticRumble(gSDLHaptic);
-	}
-
-	return gSDLGamepad;
+ (void) showMessage;
+ int count = 0;
+ SDL_JoystickID* ids = SDL_GetGamepads(&count);
+ for (int i = 0; i < count; i++)
+ {
+  if ((gSDLGamepad && SDL_GetGamepadID(gSDLGamepad) == ids[i])
+   || (gSecondGamepad && SDL_GetGamepadID(gSecondGamepad) == ids[i])) continue;
+  SDL_Gamepad** slot = !gSDLGamepad ? &gSDLGamepad : !gSecondGamepad ? &gSecondGamepad : NULL;
+  if (!slot) break;
+  *slot = SDL_OpenGamepad(ids[i]);
+  if (*slot) SDL_Log("P%d controller: %s", slot == &gSDLGamepad ? 1 : 2, SDL_GetGamepadName(*slot));
+ }
+ SDL_free(ids);
+ return gSDLGamepad;
 }
 
 static void OnJoystickRemoved(SDL_JoystickID which)
 {
-	if (NULL == gSDLGamepad)		// don't care, I didn't open any controller
-		return;
-
-	if (which != SDL_GetGamepadID(gSDLGamepad))	// don't care, this isn't the joystick I'm using
-		return;
-
-	SDL_Log("Current joystick was removed: %d", which);
-
-	// Nuke haptic device, if any
-	if (gSDLHaptic)
-	{
-		SDL_CloseHaptic(gSDLHaptic);
-		gSDLHaptic = NULL;
-	}
-
-	// Nuke reference to this controller+joystick
-	SDL_CloseGamepad(gSDLGamepad);
-	gSDLGamepad = NULL;
-
-	// Try to open another gamepad if any is connected.
-	TryOpenGamepad(false);
+ for (int p = 0; p < 2; p++)
+ {
+  SDL_Gamepad** slot = p == 0 ? &gSDLGamepad : &gSecondGamepad;
+  if (!*slot || SDL_GetGamepadID(*slot) != which) continue;
+  SDL_CloseGamepad(*slot);
+  *slot = NULL;
+  SDL_memset(&gPlayerInputs[p], 0, sizeof(PlayerInput));
+  if (p == 0 && gSDLHaptic) { SDL_CloseHaptic(gSDLHaptic); gSDLHaptic = NULL; }
+ }
+ TryOpenGamepad(false); // Existing slots never migrate to the other player.
 }
 
 int32_t GetLeftStickMagnitude_Fix32(void)
 {
-	if (!gSDLGamepad)
+ return gInputPlayer >= 0 ? gPlayerInputs[gInputPlayer].moveMagnitude : ReadStickMagnitude(gSDLGamepad);
+}
+
+short GetRightStick8WayAim(void)
+{
+ return gInputPlayer >= 0 ? gPlayerInputs[gInputPlayer].aim : ReadStickAim(gSDLGamepad);
+}
+
+static int32_t ReadStickMagnitude(SDL_Gamepad* pad)
+{
+	if (!pad)
 	{
 		return 0;
 	}
 
-	int dxRaw = (int) SDL_GetGamepadAxis(gSDLGamepad, SDL_GAMEPAD_AXIS_LEFTX);
-	int dyRaw = (int) SDL_GetGamepadAxis(gSDLGamepad, SDL_GAMEPAD_AXIS_LEFTY);
+	int dxRaw = (int) SDL_GetGamepadAxis(pad, SDL_GAMEPAD_AXIS_LEFTX);
+	int dyRaw = (int) SDL_GetGamepadAxis(pad, SDL_GAMEPAD_AXIS_LEFTY);
 
-	int magnitudeSquared = dxRaw * dxRaw + dyRaw * dyRaw;
+	int64_t magnitudeSquared = (int64_t)dxRaw * dxRaw + (int64_t)dyRaw * dyRaw;
 
 	if (magnitudeSquared < kJoystickDeadZone * kJoystickDeadZone)
 	{
 		return 0;
 	}
 
-	return (int32_t)(0x10000 * sqrtf(dxRaw * dxRaw + dyRaw * dyRaw) / 32767.0f);
+	return (int32_t)(0x10000 * sqrtf((float)magnitudeSquared) / 32767.0f);
 }
 
-short GetRightStick8WayAim(void)
+static short ReadStickAim(SDL_Gamepad* pad)
 {
-	if (!gSDLGamepad)
+	if (!pad)
 	{
 		return AIM_NONE;
 	}
 
-	int dxRaw = (int) SDL_GetGamepadAxis(gSDLGamepad, SDL_GAMEPAD_AXIS_RIGHTX);
-	int dyRaw = (int) SDL_GetGamepadAxis(gSDLGamepad, SDL_GAMEPAD_AXIS_RIGHTY);
+	int dxRaw = (int) SDL_GetGamepadAxis(pad, SDL_GAMEPAD_AXIS_RIGHTX);
+	int dyRaw = (int) SDL_GetGamepadAxis(pad, SDL_GAMEPAD_AXIS_RIGHTY);
 
 	bool right	= dxRaw > kJoystickDeadZone;
 	bool left	= dxRaw < -kJoystickDeadZone;

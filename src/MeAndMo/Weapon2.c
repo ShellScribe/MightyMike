@@ -65,6 +65,7 @@
 /*     VARIABLES      */
 /**********************/
 
+unsigned long gLastTripleShotFrame = 0;
 long	gLastRocketTime	= 0;
 long	gLastPixieTime	= 0;
 
@@ -665,18 +666,18 @@ ObjNode *newNode;
 long	dx,dy;
 short	z,y,x;
 Byte	sub;
-static	unsigned long lastShotFrame = 0;
+
 
 				/* SEE IF READY TO SHOOT */
 
 	if (!GetNeedState(kNeed_Attack))						// see if fire button pressed
 		return(false);
 
-	if ((gFrames - lastShotFrame) < 4)					// see if good interval
+	if ((gFrames - gLastTripleShotFrame) < 4)					// see if good interval
 //	if (gFrames & 0b11)
 		return(false);
 
-	lastShotFrame = gFrames;							// remember when last shot was fired
+	gLastTripleShotFrame = gFrames;							// remember when last shot was fired
 
 			/* SEE WHICH WAY TO MAKE IT GO */
 

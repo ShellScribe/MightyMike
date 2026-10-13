@@ -63,6 +63,7 @@ typedef union MikeFixed
 
 struct ObjNode
 {
+	Byte		CoopOwner;		// 0: world, 1: P1, 2: P2 (runtime only)
 	long		Genre;			// obj genre: 0=sprite, 1=nonsprite
 	unsigned  long	Z;			// z sort value
 	long		Type;			// obj type

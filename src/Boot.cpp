@@ -12,6 +12,7 @@
 extern "C"
 {
 	#include "externs.h"
+	#include "coop.h"
 	#include "renderdrivers.h"
 	#include "framebufferfilter.h"
 	#include "version.h"
@@ -80,6 +81,8 @@ tryAgain:
 static void Boot(int argc, char** argv)
 {
 	const char* executablePath = argc > 0 ? argv[0] : NULL;
+	for (int i = 1; i < argc; i++)
+		if (0 == strcmp(argv[i], "--coop")) gCoopEnabled = true;
 
 	SDL_SetAppMetadata(GAME_FULL_NAME, GAME_VERSION, GAME_IDENTIFIER);
 #if _DEBUG

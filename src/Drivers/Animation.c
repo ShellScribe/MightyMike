@@ -13,6 +13,7 @@
 #include "misc.h"
 #include "sound2.h"
 #include "externs.h"
+#include "coop.h"
 
 /****************************/
 /*    CONSTANTS             */
@@ -128,6 +129,8 @@ int32_t		offset;
 					break;
 
 			case	ANIMOP_GLOBALSETFLAG:
+					if (operand == 0 && CoopSetDeathFlag(theNodePtr))
+					{ doMore = true; break; }
 					tempPtr = (Ptr)&(gGlobalFlagList[0]);
 					tempPtr += operand;
 					*tempPtr = true;

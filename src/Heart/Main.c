@@ -29,6 +29,7 @@
 #include "input.h"
 #include "version.h"
 #include "externs.h"
+#include "coop.h"
 #include "framebufferfilter.h"
 #include <SDL3/SDL.h>
 
@@ -93,6 +94,7 @@ void ToolBoxInit(void)
 
 void InitGame(void)
 {
+	CoopInitGame();
 	gFrames = 0;
 	gStartingArea = 0;								// assume area 0 unless loading old game (see below)
 
@@ -189,6 +191,7 @@ void InitArea(void)
 	InitKeys();
 	CountBunnies();
 	LoadCurrentPlayer(false);									// load current player's info (for 2 player mode)
+	CoopInitArea();
 	InitPlayfield();											// must init playfield *after* InitMe!
 	EraseStore();												// (sets up interlace fill)
 	PutPlayerSignal(true);										// put p1 or p2 message
@@ -796,6 +799,7 @@ delete:
 
 void SaveGame(short	gameNum, Boolean atNextFlag)
 {
+	if (gCoopEnabled) return; // Never overwrite single-player saves with partial co-op state.
 OSErr		iErr;
 short		fRefNum;
 long		numBytes;
@@ -1031,6 +1035,8 @@ retry_area:	PlayArea();											// PLAY IT
 			if (gGlobFlag_MeDoneDead)							// see if Im DEAD
 			{
 							/* HANDLE DEATH */
+
+				if (gCoopEnabled) goto game_over; // adapter has exhausted team spares
 
 				if (--gNumLives)								// see if got another life
 				{
@@ -1415,6 +1421,17 @@ void GameMain(void)
 	InitArea();
 	PlayArea();
 #endif
+
+	if (gCoopEnabled)
+	{
+		gDemoMode = DEMO_MODE_OFF;
+		gPlayerMode = ONE_PLAYER;
+		gLoadOldGameFlag = false;
+		InitGame();
+		Do1PlayerGame();
+		CleanQuit();
+		return;
+	}
 
 	DoLegal();
 	DoPangeaLogo();
