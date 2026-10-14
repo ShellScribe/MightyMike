@@ -7,6 +7,10 @@ PASS: two independently assigned gamepads
 PASS: stable controller slots
 PASS: two real Pete objects
 PASS: clear test patch in first level
+PASS: P2 can move beyond dead P1's tether
+PASS: camera follows the sole survivor
+PASS: P1 can move beyond dead P2's tether
+PASS: camera follows the sole survivor
 PASS: set virtual axis
 PASS: P1 moves while P2 remains still
 PASS: set virtual axis

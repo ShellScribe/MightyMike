@@ -31,7 +31,9 @@ it has not been accepted by two people using physical controllers.
   firing but has no inventory HUD in V1.
 - Bunnies, keys, coins, score and spare lives are shared. Either player can collect
   the final bunny; both perform the exit animation.
-- The camera follows the midpoint. A movement tether keeps both on screen.
+- While both players are alive, the camera follows their midpoint and a movement
+  tether keeps both on screen. With one dead player, the camera follows the
+  survivor and releases the tether to the dead partner.
   Teleporters take both players to the destination.
 - A dead player respawns at the partner's last safe location with two seconds of
   invulnerability if a shared spare remains. With no spare, the survivor can keep
@@ -106,3 +108,13 @@ teleporters), P2 inventory HUD, co-op saves, and polished join/rebind menus.
 The first-level vertical slice and next-level setup receive automated coverage;
 full campaign support is available in the code but is not claimed validated.
 No networking, split-screen, new artwork, or broader engine rewrite.
+
+## Playtest follow-ups
+
+- Add an in-game screen to assign and map both controllers independently.
+  Include calibration and controls for controllers without a right stick.
+  This is noted for a later increment, not implemented in V1.
+- Owner reported basic play working with Switch Pro + N64, then P2 confined
+  after P1 died. Reproduced a dead-partner tether defect and changed camera/
+  tether rules for a sole survivor. Physical confirmation of that fix remains
+  pending; the precise playtest location/respawn situation has not been captured.

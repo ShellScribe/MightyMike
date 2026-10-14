@@ -54,3 +54,23 @@ No claim of physical-controller, audible audio or full-campaign acceptance.
 - GameSir D-pad, left trigger, stick clicks and Guide remain unverified.
 - Physical gameplay acceptance is still pending; setup/calibration is not a
   claim that movement, combat or level completion passed with physical devices.
+
+## Owner playtest and dead-partner regression — 2026-10-13
+
+- Owner played with Switch Pro (P1) and Nintendo N64 (P2), reporting that basic
+  play seemed to work. Reported P2 confined to part of the level after P1 died.
+  No full campaign/level-completion acceptance inferred from that report.
+- Added focused tests placing a dead partner beyond the old tether radius while
+  the survivor is inside the viewport. Before the fix, the suite exited 1:
+  `FAIL: P2 can move beyond dead P1's tether`.
+- Fixed player-distance limiting to ignore a dead partner and made the camera
+  follow the sole survivor. The midpoint/tether behavior returns with two living
+  players. Either survivor now passes the targeted check and the full smoke
+  suite exits 0, including existing revival, combat and single-player checks.
+- Physical devices stayed connected; this test process used
+  `SDL_JOYSTICK_HIDAPI=0 SDL_JOYSTICK_IOKIT=0 SDL_JOYSTICK_MFI=0` and dummy audio
+  to isolate its virtual devices. No system/controller settings changed.
+- Release app rebuilt successfully; only the existing linker alignment warning.
+- Exact owner death/respawn context and physical retest remain pending. If the
+  partner had already respawned, investigate the specific location separately.
+- Follow-up noted: in-game assignment and mapping for both controllers.

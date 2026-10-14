@@ -109,6 +109,47 @@ static void MoveToArena(void)
  InitPlayfield();
  gEnemyFreezeTimer = 30000; // controlled movement tests exclude active enemy AI
 }
+// Keep the survivor inside the viewport, but place a dead partner beyond the
+// old tether radius. Test both player orders without requiring a long map walk.
+static void CheckDeadPartnerTether(int deadPlayer)
+{
+ int survivor = deadPlayer ^ 1;
+ PlayerState saved = gCoopPlayers[deadPlayer];
+ ObjNode* corpse = saved.gMyNodePtr;
+ MikeFixed oldX = corpse->X, oldY = corpse->Y;
+ long oldAnim = corpse->SubType;
+ long scrollX = gScrollX, scrollY = gScrollY;
+ ObjNode* live = gCoopPlayers[survivor].gMyNodePtr;
+ CoopBeginObject(corpse);
+ gMyHealth = -1;
+ gCoopPlayers[deadPlayer].doneDead = true;
+ corpse->SubType = MY_ANIMBASE_DIE;
+ corpse->X.Int = gMyX = live->X.Int - PF_WINDOW_WIDTH;
+ corpse->Y.Int = gMyY = live->Y.Int - PF_WINDOW_HEIGHT;
+ CoopEndObject();
+ gScrollX = live->X.Int - PF_WINDOW_WIDTH / 2;
+ gScrollY = live->Y.Int - PF_WINDOW_HEIGHT / 2;
+ gThisNodePtr = live;
+ CoopBeginObject(live);
+ GetObjectInfo();
+ gX.L += 0x10000;
+ gY.L += 0x10000;
+ CoopLimitMove();
+ Check(gX.Int == live->X.Int + 1 && gY.Int == live->Y.Int + 1,
+  deadPlayer == 0 ? "P2 can move beyond dead P1's tether" : "P1 can move beyond dead P2's tether");
+ CoopEndObject();
+ long centerX, centerY;
+ CoopCameraCenter(&centerX, &centerY);
+ Check(centerX == live->X.Int && centerY == live->Y.Int, "camera follows the sole survivor");
+ CoopBeginObject(corpse);
+ corpse->X = oldX; corpse->Y = oldY; corpse->SubType = oldAnim;
+ gMyHealth = saved.gMyHealth;
+ gMyX = saved.gMyX; gMyY = saved.gMyY;
+ gCoopPlayers[deadPlayer].doneDead = saved.doneDead;
+ CoopEndObject();
+ gScrollX = scrollX; gScrollY = scrollY;
+}
+
 void CoopRunSmokeTests(void)
 {
  Check(GetPlayerGamepad(0) && GetPlayerGamepad(1), "two independently assigned gamepads");
@@ -124,6 +165,8 @@ void CoopRunSmokeTests(void)
  gIsInGame = true;
  Check(gCoopReady && gCoopPlayers[0].gMyNodePtr != gCoopPlayers[1].gMyNodePtr, "two real Pete objects");
  MoveToArena();
+ CheckDeadPartnerTether(0);
+ CheckDeadPartnerTether(1);
  ResetInput();
  long x0 = gCoopPlayers[0].gMyX, x1 = gCoopPlayers[1].gMyX;
  Axis(0, SDL_GAMEPAD_AXIS_LEFTX, 32767);

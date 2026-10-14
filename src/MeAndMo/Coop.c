@@ -141,16 +141,20 @@ bool CoopSetDeathFlag(ObjNode* node)
 void CoopLimitMove(void)
 {
  if (gCoopActivePlayer < 0 || gTeleportingFlag) return;
- const PlayerState* other = &gCoopPlayers[gCoopActivePlayer ^ 1];
+ int otherPlayer = gCoopActivePlayer ^ 1;
+ const PlayerState* other = &gCoopPlayers[otherPlayer];
  // Reject only movement that increases an excessive separation. No warping
  // through walls: collision detection still resolves the accepted movement.
  long maxX = PF_WINDOW_WIDTH - 128;
  long maxY = PF_WINDOW_HEIGHT - 128;
  long oldX = gThisNodePtr->X.Int, oldY = gThisNodePtr->Y.Int;
- if (labs(gX.Int - other->gMyX) > maxX && labs(gX.Int - other->gMyX) > labs(oldX - other->gMyX))
-  { gX = gThisNodePtr->X; gDX = gSumDX = 0; }
- if (labs(gY.Int - other->gMyY) > maxY && labs(gY.Int - other->gMyY) > labs(oldY - other->gMyY))
-  { gY = gThisNodePtr->Y; gDY = gSumDY = 0; }
+ if (!IsDead(otherPlayer))
+ {
+  if (labs(gX.Int - other->gMyX) > maxX && labs(gX.Int - other->gMyX) > labs(oldX - other->gMyX))
+   { gX = gThisNodePtr->X; gDX = gSumDX = 0; }
+  if (labs(gY.Int - other->gMyY) > maxY && labs(gY.Int - other->gMyY) > labs(oldY - other->gMyY))
+   { gY = gThisNodePtr->Y; gDY = gSumDY = 0; }
+ } // A dead partner must not anchor the survivor to a cleared section of map.
  // Keep the sprite inside the visible camera while it catches up.
  if (gX.Int < gScrollX + 24 || gX.Int > gScrollX + PF_WINDOW_WIDTH - 24)
   { gX = gThisNodePtr->X; gDX = gSumDX = 0; }
@@ -242,6 +246,14 @@ void CoopEndFrame(void)
 }
 void CoopCameraCenter(long* x, long* y)
 {
+ bool dead0 = IsDead(0), dead1 = IsDead(1);
+ if (dead0 != dead1)
+ {
+  ObjNode* survivor = gCoopPlayers[dead0 ? 1 : 0].gMyNodePtr;
+  *x = survivor->X.Int;
+  *y = survivor->Y.Int;
+  return;
+ }
  *x = (gCoopPlayers[0].gMyNodePtr->X.Int + gCoopPlayers[1].gMyNodePtr->X.Int) / 2;
  *y = (gCoopPlayers[0].gMyNodePtr->Y.Int + gCoopPlayers[1].gMyNodePtr->Y.Int) / 2;
 }
