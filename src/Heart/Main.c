@@ -393,7 +393,8 @@ void PlayArea(void)
 		if (GetNewNeedState(kNeed_UIPause) || IsCmdQPressed())				// see if abort game
 		{
 			PauseAllChannels(true);
-			gAbortGameFlag = AskIfQuit();
+			if (gCoopEnabled && !IsCmdQPressed()) CoopSetupScreen(false);
+			else gAbortGameFlag = AskIfQuit();
 			if (!gAbortGameFlag)
 				PauseAllChannels(false);
 		}

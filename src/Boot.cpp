@@ -85,7 +85,8 @@ static void Boot(int argc, char** argv)
 	{
 		if (0 == strcmp(argv[i], "--coop")) gCoopEnabled = true;
 #ifdef COOP_SMOKE_TESTS
-		if (0 == strcmp(argv[i], "--coop-smoke"))
+		if (0 == strcmp(argv[i], "--coop-setup-smoke")) gRunCoopSetupSmoke = true;
+		if (0 == strcmp(argv[i], "--coop-smoke") || gRunCoopSetupSmoke)
 			gRunCoopSmokeTests = gCoopEnabled = true;
 #endif
 	}

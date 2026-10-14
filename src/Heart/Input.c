@@ -201,6 +201,9 @@ void UpdateInput(void)
 
 	// --------------------------------------------
 	// Parse system key chords
+#ifdef COOP_SMOKE_TESTS
+	if (gRunCoopSetupSmoke) CoopSetupSmokeInput();
+#endif
 
 	ParseAltEnter();
 

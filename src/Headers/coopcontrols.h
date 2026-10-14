@@ -25,4 +25,5 @@ void CoopDrawBox(int x, int y, int w, int h, Byte color);
 void CoopPaletteColors(Byte* light, Byte* dark);
 #ifdef COOP_SMOKE_TESTS
 void CoopTestReady(int player);
+void CoopTestReloadBindings(void);
 #endif

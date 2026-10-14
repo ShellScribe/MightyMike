@@ -26,9 +26,13 @@ static const char* captions[COOP_ACTIONS] = {
 
 static bool BindingPath(char* path, size_t size)
 {
- const char* folder = SDL_GetPrefPath("Pangea Software", "MightyMike");
+#ifdef COOP_SMOKE_TESTS
+ if (gRunCoopSmokeTests) { SDL_snprintf(path,size,"/private/tmp/mightymike-coop-test-bindings.txt"); return true; }
+#endif
+ char* folder = SDL_GetPrefPath("Pangea Software", "MightyMike");
  if (!folder) return false;
  SDL_snprintf(path, size, "%scoop-controls-v1.txt", folder);
+ SDL_free(folder);
  return true;
 }
 static bool ValidBinding(CoopBinding b)
@@ -122,7 +126,7 @@ void CoopAssignController(int p, SDL_JoystickID id)
  if (controllers[p]) SDL_CloseJoystick(controllers[p]);
  controllers[p] = id ? SDL_OpenJoystick(id) : NULL;
  ready[p] = false;
- SDL_memset(&gPlayerInputs[p], 0, sizeof(PlayerInput));
+ ClearInput();
  if (!controllers[p]) return;
  char guid[33];
  SDL_GUIDToString(SDL_GetJoystickGUID(controllers[p]), guid, sizeof(guid));
@@ -204,6 +208,7 @@ static bool ProfileUsable(int p)
 bool CoopControllersNeedSetup(void) { return !ready[0] || !ready[1] || !ProfileUsable(0) || !ProfileUsable(1); }
 #ifdef COOP_SMOKE_TESTS
 void CoopTestReady(int p) { ready[p] = ProfileUsable(p); }
+void CoopTestReloadBindings(void) { loaded=false; LoadBindings(); SDL_memcpy(gCoopProfiles,savedProfiles,sizeof(savedProfiles)); }
 #endif
 
 void CoopDrawBox(int x, int y, int w, int h, Byte color)
@@ -229,8 +234,9 @@ void CoopDrawText(int x, int y, const char* text, Byte color)
 {
  for (; *text && x < VISIBLE_WIDTH-12; text++, x += 10)
  {
-  unsigned char c = toupper((unsigned char)*text);
+  unsigned char c = tolower((unsigned char)*text);
   if (c == ' ') continue;
+  if (c == '-') { CoopDrawBox(x+1,y+6,7,1,color); continue; }
   int frame = ASCIIToBigFont(c);
   if (!frame) continue;
   const uint8_t *pixels, *mask;
@@ -239,7 +245,7 @@ void CoopDrawText(int x, int y, const char* text, Byte color)
    for (int i = 0; i < 9; i++)
    {
     int offset = (j * fh->height / 12) * fh->width + i * fh->width / 9;
-    if (mask[offset] != 255 || pixels[offset]) CoopDrawBox(x+i, y+j, 1, 1, color);
+    if (mask[offset] != 255 && pixels[offset] != 179 && (pixels[offset] < 221 || pixels[offset] > 224)) CoopDrawBox(x+i, y+j, 1, 1, color);
    }
  }
 }
@@ -345,7 +351,14 @@ static void CycleDevice(int p, int direction)
  for (int step=1;step<=count;step++)
  {
   int index=(current+direction*step+count*2)%count;
-  if (ids[index]!=CoopControllerID(p^1)) { CoopAssignController(p,ids[index]); break; }
+  if (ids[index] == CoopControllerID(p^1))
+  {
+   SDL_JoystickID mine=CoopControllerID(p), other=CoopControllerID(p^1);
+   CoopAssignController(p,0); CoopAssignController(p^1,0);
+   CoopAssignController(p,other); CoopAssignController(p^1,mine);
+   break;
+  }
+  CoopAssignController(p,ids[index]); break;
  }
  SDL_free(ids); TryOpenGamepad(false); CoopRequireReady(); ClearInput();
 }
@@ -375,7 +388,7 @@ void CoopSetupScreen(bool required)
   if (GetNewNeedState(kNeed_UILeft) || GetNewNeedState(kNeed_UIRight))
   {
    if (row<2) CycleDevice(row,GetNewNeedState(kNeed_UILeft) ? -1 : 1);
-   else if (row==8 || row==9) { player=row-8; action=(action+1+COOP_ACTIONS)%COOP_ACTIONS; }
+   else if (row==8 || row==9) { player=row-8; action=((action<0 ? 0 : action)+(GetNewNeedState(kNeed_UILeft) ? -1 : 1)+COOP_ACTIONS)%COOP_ACTIONS; }
   }
   if (confirm)
   {
@@ -420,6 +433,7 @@ void CoopSetupScreen(bool required)
   int x=(VISIBLE_WIDTH-620)/2,y=40;
   CoopDrawBox(x,y,620,380,dark);
   CoopDrawText(x+12,y+12,"COUCH CO OP SETUP",light);
+  CoopDrawBox(x+2,y+40+row*24,3,12,light);
   for (int p=0;p<2;p++)
   {
    char line[80]; const char* name=controllers[p] ? SDL_GetJoystickName(controllers[p]) : "disconnected";
@@ -434,11 +448,13 @@ void CoopSetupScreen(bool required)
   }
   for (int p=0;p<2;p++)
   {
-   char line[80]; SDL_snprintf(line,sizeof(line),"%sP%d edit: %s",row==p+8 ? "> " : "  ",p+1,captions[action<0 ? 0 : action]);
+   char line[100], binding[48];
+   BindingName(gCoopProfiles[p].binding[action<0 ? 0 : action][0],binding,sizeof(binding));
+   SDL_snprintf(line,sizeof(line),"  P%d %s: %s",p+1,captions[action<0 ? 0 : action],binding);
    CoopDrawText(x+10,y+232+p*24,line,light);
   }
   CoopDrawText(x+10,y+280,row==10 ? "> quit campaign" : "  quit campaign",light);
-  CoopDrawText(x+10,y+310,"arrows select. enter or shoot confirms. F1 setup.",light);
+  CoopDrawText(x+10,y+310,"arrows select or edit action. enter confirms.",light);
   CoopDrawText(x+10,y+340,message,light);
   PresentIndexedFramebuffer(); SDL_Delay(16);
  }

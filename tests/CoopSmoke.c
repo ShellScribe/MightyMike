@@ -3,8 +3,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "myglobals.h"
+#include "objecttypes.h"
+#include "font.h"
 #include "externs.h"
 #include "coop.h"
+#include "coopcontrols.h"
+#include "myguy2.h"
+#include "triggers.h"
+#include "cinema.h"
+#include "infobar.h"
 #include "input.h"
 #include "main.h"
 #include "myguy.h"
@@ -20,6 +27,7 @@
 #include "io.h"
 
 bool gRunCoopSmokeTests;
+bool gRunCoopSetupSmoke;
 static SDL_JoystickID testIDs[2];
 static SDL_Joystick* sticks[2];
 static void Check(bool success, const char* label)
@@ -52,6 +60,17 @@ void CoopAttachTestControllers(void)
   SDL_SetJoystickVirtualAxis(sticks[p], SDL_GAMEPAD_AXIS_LEFT_TRIGGER, -32768);
   SDL_SetJoystickVirtualAxis(sticks[p], SDL_GAMEPAD_AXIS_RIGHT_TRIGGER, -32768);
  }
+}
+// Test-only bridge: keyboard F5/F6 operate the two virtual Start buttons;
+// F7 presses virtual P1 shoot and F8 moves its raw X axis. UI capture still
+// reads real SDL joystick state through the production path.
+void CoopSetupSmokeInput(void)
+{
+ const bool* keys=SDL_GetKeyboardState(NULL);
+ for (int p=0;p<2;p++) SDL_SetJoystickVirtualButton(sticks[p],SDL_GAMEPAD_BUTTON_START,keys[p==0 ? SDL_SCANCODE_F5 : SDL_SCANCODE_F6]);
+ SDL_SetJoystickVirtualButton(sticks[0],SDL_GAMEPAD_BUTTON_WEST,keys[SDL_SCANCODE_F7]);
+ SDL_SetJoystickVirtualAxis(sticks[0],SDL_GAMEPAD_AXIS_LEFTX,keys[SDL_SCANCODE_F8] ? 32767 : 0);
+ SDL_UpdateJoysticks();
 }
 static void Axis(int p, int axis, int value)
 {
@@ -150,11 +169,180 @@ static void CheckDeadPartnerTether(int deadPlayer)
  gScrollX = scrollX; gScrollY = scrollY;
 }
 
+static void CheckPermanentDeath(int p)
+{
+ int oldLives=gNumLives;
+ gNumLives=1; // display has zero shared spares
+ CoopBeginObject(gCoopPlayers[p].gMyNodePtr);
+ gMyHealth=0; gMyBlinkieTimer=gShieldTimer=0;
+ IGotHurt(); CoopEndObject(); Tick(160);
+ Check(gCoopPlayers[p].doneDead && !gGlobFlag_MeDoneDead,"permanent death leaves the partner playable with zero spares");
+ CheckDeadPartnerTether(p);
+ int survivor=p^1;
+ long x=gCoopPlayers[survivor].gMyX;
+ Axis(survivor,SDL_GAMEPAD_AXIS_LEFTX,32767); Tick(3); ResetInput();
+ Check(gCoopPlayers[survivor].gMyX>x,"actual sole survivor moves after permanent death");
+ int freeze=gEnemyFreezeTimer; Tick(2);
+ Check(gEnemyFreezeTimer==freeze-2,"shared freeze timer advances with either sole survivor");
+ gNumLives=2; Tick(1); gNumLives=oldLives;
+ Check(!gCoopPlayers[p].doneDead && gCoopPlayers[p].revivedTicks>0,"later shared spare revives the fallen player");
+}
+static void CheckCoopBindings(void)
+{
+ CoopProfile old[2]; SDL_memcpy(old,gCoopProfiles,sizeof(old));
+ KeyBinding legacy[NUM_CONTROL_NEEDS]; SDL_memcpy(legacy,gGamePrefs.keys,sizeof(legacy));
+ Check(CoopControllersNeedSetup(),"startup requires readiness before the first enemy step");
+ CoopTestReady(0); Check(CoopControllersNeedSetup(),"one ready player cannot start the team");
+ CoopTestReady(1); Check(!CoopControllersNeedSetup(),"both players unlock the readiness gate");
+ gCoopProfiles[1].binding[COOP_SHOOT][0]=(CoopBinding){COOP_RAW_BUTTON,SDL_GAMEPAD_BUTTON_SOUTH,0,0};
+ gCoopProfiles[1].binding[COOP_SHOOT][1]=(CoopBinding){0};
+ gCoopProfiles[1].binding[COOP_AIM_UP][0]=(CoopBinding){COOP_RAW_BUTTON,SDL_GAMEPAD_BUTTON_NORTH,0,0};
+ gCoopProfiles[1].binding[COOP_AIM_RIGHT][0]=(CoopBinding){COOP_RAW_BUTTON,SDL_GAMEPAD_BUTTON_EAST,0,0};
+ SDL_SetJoystickVirtualButton(sticks[1],SDL_GAMEPAD_BUTTON_SOUTH,true);
+ SDL_SetJoystickVirtualButton(sticks[1],SDL_GAMEPAD_BUTTON_NORTH,true);
+ SDL_SetJoystickVirtualButton(sticks[1],SDL_GAMEPAD_BUTTON_EAST,true);
+ SDL_UpdateJoysticks(); UpdateInput();
+ Check(gPlayerInputs[1].pressed[kNeed_Attack] && !gPlayerInputs[0].held[kNeed_Attack],"captured P2 shoot binding is independent of P1");
+ Check(gPlayerInputs[1].aim==AIM_UP_RIGHT && gPlayerInputs[0].aim==AIM_NONE,"button aiming combines diagonals without a right stick");
+ ClearInput(); UpdateInput();
+ Check(!gPlayerInputs[1].held[kNeed_Attack] && gPlayerInputs[1].aim==AIM_NONE,"held buttons and aim are suppressed after pause");
+ for (int b=0;b<SDL_GAMEPAD_BUTTON_COUNT;b++) SDL_SetJoystickVirtualButton(sticks[1],b,false);
+ SDL_UpdateJoysticks(); UpdateInput();
+ SDL_SetJoystickVirtualButton(sticks[1],SDL_GAMEPAD_BUTTON_SOUTH,true);
+ SDL_UpdateJoysticks(); UpdateInput();
+ Check(gPlayerInputs[1].pressed[kNeed_Attack],"release rearms captured inputs");
+ Check(SDL_memcmp(legacy,gGamePrefs.keys,sizeof(legacy))==0,"co-op remapping leaves legacy single-player bindings unchanged");
+ Check(CoopSaveBindings(),"co-op profiles save to isolated test preferences");
+ CoopProfile persisted=gCoopProfiles[1]; CoopResetBindings(1); CoopTestReloadBindings();
+ Check(SDL_memcmp(&persisted,&gCoopProfiles[1],sizeof(persisted))==0,"co-op binding file round trip preserves both profiles");
+ SDL_memcpy(gCoopProfiles,old,sizeof(old));
+ for (int b=0;b<SDL_GAMEPAD_BUTTON_COUNT;b++) SDL_SetJoystickVirtualButton(sticks[1],b,false);
+ SDL_UpdateJoysticks(); UpdateInput();
+}
+static void CheckUnmappedDevice(void)
+{
+ SDL_JoystickID survivor=CoopControllerID(0);
+ SDL_VirtualJoystickDesc desc; SDL_zero(desc); SDL_INIT_INTERFACE(&desc);
+ desc.type=SDL_JOYSTICK_TYPE_UNKNOWN; desc.naxes=2; desc.nbuttons=9; desc.nhats=1; desc.name="Unmapped co-op calibration fixture";
+ SDL_JoystickID rawID=SDL_AttachVirtualJoystick(&desc); SDL_Joystick* raw=SDL_OpenJoystick(rawID);
+ Check(raw && !SDL_IsGamepad(rawID),"unmapped raw joystick is available without a database mapping");
+ CoopAssignController(1,rawID); SDL_UpdateJoysticks(); UpdateInput();
+ Check(!GetPlayerGamepad(1) && CoopControllerID(0)==survivor && CoopControllersNeedSetup(),"unmapped device assignment preserves survivor and requires calibration");
+ CoopResetBindings(1);
+ for (int a=0;a<4;a++) gCoopProfiles[1].binding[a][0]=(CoopBinding){COOP_RAW_AXIS,a<2 ? 1 : 0,a%2 ? 1 : -1,0};
+ int directions[]={SDL_HAT_UP,SDL_HAT_DOWN,SDL_HAT_LEFT,SDL_HAT_RIGHT};
+ for (int a=0;a<4;a++) gCoopProfiles[1].binding[a][1]=(CoopBinding){COOP_RAW_HAT,0,directions[a],0};
+ for (int a=0;a<4;a++) gCoopProfiles[1].binding[COOP_AIM_UP+a][0]=(CoopBinding){COOP_RAW_BUTTON,5+a,0,0};
+ for (int a=0;a<5;a++) gCoopProfiles[1].binding[COOP_SHOOT+a][0]=(CoopBinding){COOP_RAW_BUTTON,a,0,0};
+ SDL_SetJoystickVirtualAxis(raw,0,0); SDL_UpdateJoysticks(); UpdateInput();
+ SDL_SetJoystickVirtualAxis(raw,0,32767); SDL_SetJoystickVirtualButton(raw,5,true); SDL_SetJoystickVirtualButton(raw,8,true);
+ SDL_SetJoystickVirtualButton(raw,0,true); SDL_SetJoystickVirtualButton(raw,3,true); SDL_SetJoystickVirtualButton(raw,4,true);
+ SDL_UpdateJoysticks(); UpdateInput();
+ Check(gPlayerInputs[1].held[kNeed_Right] && gPlayerInputs[1].aim==AIM_UP_RIGHT,"unmapped raw axis movement and N64-style button aiming");
+ Check(gPlayerInputs[1].pressed[kNeed_Attack] && gPlayerInputs[1].pressed[kNeed_Radar] && gPlayerInputs[1].pressed[kNeed_UIPause],"unmapped shooting radar and pause use captured raw buttons");
+ SDL_SetJoystickVirtualAxis(raw,0,0); SDL_SetJoystickVirtualHat(raw,0,SDL_HAT_DOWN); SDL_UpdateJoysticks(); UpdateInput();
+ Check(gPlayerInputs[1].held[kNeed_Down] && !gPlayerInputs[1].held[kNeed_Right],"captured hat movement is independent of axis movement");
+ CoopTestReady(0); CoopTestReady(1); Check(!CoopControllersNeedSetup(),"calibrated raw device passes the ready gate");
+ SDL_CloseJoystick(raw); SDL_DetachVirtualJoystick(rawID); SDL_UpdateJoysticks(); UpdateInput();
+ Check(CoopControllersNeedSetup() && CoopControllerID(0)==survivor && !gPlayerInputs[1].held[kNeed_Attack] && gPlayerInputs[1].aim==AIM_NONE,"raw disconnect clears stale input and pauses without moving the survivor");
+ Check(CoopControllerID(1)==testIDs[1],"another connected device can fill the vacant co-op slot");
+ CoopResetBindings(1); SDL_UpdateJoysticks(); UpdateInput();
+}
+
+static void CheckCampaignMechanics(void)
+{
+ bool teleported=false, platformTested=false;
+ for (int scene=0;scene<5;scene++) for (int area=0;area<3;area++)
+ {
+  gIsInGame=false; gSceneNum=scene; gAreaNum=area; InitArea(); gIsInGame=true;
+  Check(gNumBunnies>0 && gCoopPlayers[0].gMyNodePtr->CoopOwner==1 && gCoopPlayers[1].gMyNodePtr->CoopOwner==2,"campaign area loads two owned avatars and shared objectives");
+  gEnemyFreezeTimer=30000;
+  if (scene==SCENE_FAIRY || scene==SCENE_BARGAIN)
+  {
+   ObjNode* real[2]={gCoopPlayers[0].gMyNodePtr,gCoopPlayers[1].gMyNodePtr};
+   for (int p=0;p<2;p++)
+   {
+    CoopBeginObject(real[p]);
+    if (scene==SCENE_FAIRY) TurnMeIntoFrog();
+    else
+    {
+     ObjNode* ship=MakeNewShape(GroupNum_SpaceShip,ObjType_SpaceShip,0,gMyX,gMyY,100,NULL,PLAYFIELD_RELATIVE);
+     Check(ship!=NULL,"ship fixture uses real campaign artwork"); TurnMeIntoShip(ship);
+    }
+    CoopEndObject();
+    Check(gCoopPlayers[p].gMyNodePtr!=real[p] && gCoopPlayers[p].gMyNodePtr->CoopOwner==p+1,"transformed avatar retains its owner");
+   }
+   Tick(3);
+   for (int p=0;p<2;p++)
+    Check(gCoopPlayers[p].gRealMePtr==real[p] && !real[p]->MoveFlag,"simultaneous transformations retain independent hidden avatars");
+  }
+  if (!teleported)
+  {
+   ObjectEntryType* source=NULL;
+   for (int i=0;i<gNumItems;i++)
+    if ((gMasterItemList[i].type & ITEM_NUM)==PF_OBJ_NUM_TELEPORT && gMasterItemList[i].parm[0]==0) { source=&gMasterItemList[i]; break; }
+   if (source)
+   {
+    Check(AddTeleport(source),"create real campaign teleporter trigger"); ObjNode* trigger=gMostRecentShape;
+    // Teleporters are non-sprite nodes; find the item-backed trigger directly.
+    for (ObjNode* n=FirstNodePtr;n;n=n->NextNode) if (n->ItemIndex==source && (n->CType&CTYPE_TRIGGER)) { trigger=n; break; }
+    ObjNode* frog=gCoopPlayers[1].gMyNodePtr;
+    gThisNodePtr=frog; CoopBeginObject(frog); GetObjectInfo();
+    HandleTrigger(trigger,SIDE_BITS_TOP); CalcObjectBox(); UpdateObject();
+    long dx=gX.Int,dy=gY.Int; CoopEndObject(); CoopEndFrame();
+    for (int p=0;p<2;p++)
+    {
+     PlayerState* state=&gCoopPlayers[p];
+     Check(state->gMyNodePtr->X.Int==dx && state->gMyNodePtr->Y.Int==dy && state->gMyDX==0 && !state->gTeleportingFlag,"P2 teleporter moves team and clears momentum");
+     if (state->gRealMePtr) Check(state->gRealMePtr->X.Int==dx && state->gRealMePtr->Y.Int==dy,"teleport synchronizes hidden transformed avatar");
+     Check(state->gMyNodePtr->LeftSide==dx+state->gMyNodePtr->LeftOff,"teleported collision box is immediately current");
+    }
+    teleported=true;
+   }
+  }
+  if (scene==SCENE_FAIRY || scene==SCENE_BARGAIN)
+  {
+   // Completion of a warp while transformed must update hidden Pete too.
+   CoopBeginObject(gCoopPlayers[1].gMyNodePtr);
+   gMyNodePtr->X.Int+=32; gMyNodePtr->Y.Int+=32; gTeleportingFlag=true;
+   CoopEndObject(); CoopEndFrame();
+   for (int p=0;p<2;p++)
+    Check(gCoopPlayers[p].gRealMePtr->X.Int==gCoopPlayers[p].gMyNodePtr->X.Int && gCoopPlayers[p].gRealMePtr->Y.Int==gCoopPlayers[p].gMyNodePtr->Y.Int,"transformed warp completion synchronizes hidden avatars");
+  }
+  if (scene==SCENE_FAIRY || scene==SCENE_BARGAIN)
+   for (int p=0;p<2;p++)
+   {
+    CoopBeginObject(gCoopPlayers[p].gMyNodePtr); DisposeFrog(); DisposeSpaceShip(); CoopEndObject();
+    Check(!gCoopPlayers[p].gFrogFlag && !gCoopPlayers[p].gSpaceShipFlag && gCoopPlayers[p].gMyNodePtr->CoopOwner==p+1 && gCoopPlayers[p].gMyNodePtr->MoveFlag,"transformation disposal restores the correct Pete");
+   }
+  if (scene==SCENE_CANDY && !platformTested)
+  {
+   // Actual moving-platform collision/carry routine, controlled location/delta.
+   ObjNode* platform=MakeNewShape(GroupNum_CandyMPlatform,ObjType_CandyMPlatform,0,gMyX,gMyY,1,NULL,PLAYFIELD_RELATIVE);
+   Check(platform!=NULL,"real moving-platform sprite fixture");
+   platform->CType=CTYPE_MPLATFORM; platform->TopOff=platform->LeftOff=-40; platform->BottomOff=platform->RightOff=40;
+   platform->DX=0x10000; platform->DY=0x20000; CalcObjectBox2(platform);
+   for (int p=0;p<2;p++)
+   {
+    gThisNodePtr=gCoopPlayers[p].gMyNodePtr; CoopBeginObject(gThisNodePtr); GetObjectInfo(); gSumDX=gSumDY=0;
+    CheckIfMeOnMPlatform();
+    Check(gMyNodePtr->MPlatform==platform && gSumDX==0x10000 && gSumDY==0x20000,"same moving platform carries either Pete independently");
+    CoopEndObject();
+   }
+   DeleteObject(platform); platformTested=true;
+  }
+  Tick(2);
+ }
+ Check(teleported && platformTested,"campaign-specific teleport and platform checks executed");
+ gIsInGame=false;
+}
+
 void CoopRunSmokeTests(void)
 {
  Check(GetPlayerGamepad(0) && GetPlayerGamepad(1), "two independently assigned gamepads");
  Check(SDL_GetGamepadID(GetPlayerGamepad(0)) == testIDs[0]
   && SDL_GetGamepadID(GetPlayerGamepad(1)) == testIDs[1], "stable controller slots");
+ CoopResetBindings(0); CoopResetBindings(1);
  gSceneNum = gStartingScene = 0;
  gAreaNum = 0;
  gPlayerMode = ONE_PLAYER;
@@ -165,6 +353,15 @@ void CoopRunSmokeTests(void)
  gIsInGame = true;
  Check(gCoopReady && gCoopPlayers[0].gMyNodePtr != gCoopPlayers[1].gMyNodePtr, "two real Pete objects");
  MoveToArena();
+ if (gRunCoopSetupSmoke)
+ {
+  long frames=gFrames; short health=gMyHealth;
+  CoopSetupScreen(true);
+  Check(gFrames==frames && gMyHealth==health,"setup modal freezes simulation and enemy damage");
+  Check(!CoopControllersNeedSetup(),"setup modal resumes only after both virtual players are ready");
+  fprintf(stderr,"COOP SETUP SMOKE PASSED\n"); gIsInGame=false; return;
+ }
+ CheckCoopBindings();
  CheckDeadPartnerTether(0);
  CheckDeadPartnerTether(1);
  ResetInput();
@@ -266,6 +463,7 @@ void CoopRunSmokeTests(void)
   ObjNode* n = gCoopPlayers[p].gMyNodePtr;
   Check(n->X.Int >= gScrollX+14 && n->X.Int <= gScrollX+PF_WINDOW_WIDTH-14, "player visible in shared camera");
  }
+ CheckPermanentDeath(0); CheckPermanentDeath(1);
  // Exercise the last-bunny pickup through the real collision/bonus path.
  gNumBunnies = 1;
  CoopBeginObject(gCoopPlayers[1].gMyNodePtr);
@@ -281,7 +479,12 @@ void CoopRunSmokeTests(void)
  Check(gNumBunnies == 0 && gCoopPlayers[0].gMyNodePtr->SubType == MY_ANIMBASE_LIFTOFF
   && gCoopPlayers[1].gMyNodePtr->SubType == MY_ANIMBASE_LIFTOFF, "either player completes shared bunny objective");
  Tick(300);
- Check(gFinishedArea, "real liftoff animation completes level");
+ Check(gFinishedArea && gCoopPlayers[0].gMyNodePtr->YOffset.Int < -340 && gCoopPlayers[1].gMyNodePtr->YOffset.Int < -340, "both real liftoff animations complete level");
+ gIsInGame=false; SetScreenOffsetFor640x480();
+ gNumCoins=201; gGamePrefs.music=false;
+ short max0=gMyMaxHealth,max1=gCoopPlayers[1].gMyMaxHealth; long bonusScore=gScore;
+ ShowBonusScreen();
+ Check(gScore>bonusScore && gNumCoins==0 && gMyMaxHealth==max0+1 && gCoopPlayers[1].gMyMaxHealth==max1+1,"real bonus screen awards team points and both max-health upgrades without save prompt");
  gIsInGame = false;
  gMyHealth = gCoopPlayers[0].gMyHealth = -1;
  gCoopPlayers[1].gMyHealth = -1;
@@ -322,6 +525,8 @@ void CoopRunSmokeTests(void)
  SDL_UpdateJoysticks(); UpdateInput();
  Check(GetPlayerGamepad(0) && SDL_GetGamepadID(GetPlayerGamepad(0)) == testIDs[0]
   && SDL_GetGamepadID(GetPlayerGamepad(1)) == testIDs[1], "reconnect fills vacant slot without reassigning partner");
+ CheckCampaignMechanics();
+ CheckUnmappedDevice();
  // Original single-player startup and movement use the untouched legacy route.
  gCoopEnabled = false;
  gSceneNum = gAreaNum = 0;
@@ -337,6 +542,10 @@ void CoopRunSmokeTests(void)
  Tick(3);
  Check(gMyX > oldX, "original single-player movement");
  gIsInGame = false;
+ gPlayerMode=TWO_PLAYER; InitGame(); InitArea();
+ peteCount=0;
+ for (ObjNode* n=FirstNodePtr;n;n=n->NextNode) if (n->CType==CTYPE_MYGUY) peteCount++;
+ Check(peteCount==1 && !gCoopReady,"original alternating-player mode initializes one active Pete");
  for (int p = 0; p < 2; p++) { SDL_CloseJoystick(sticks[p]); SDL_DetachVirtualJoystick(testIDs[p]); }
  fprintf(stderr, "COOP SMOKE PASSED (SDL virtual controllers; human play unverified)\n");
 }
