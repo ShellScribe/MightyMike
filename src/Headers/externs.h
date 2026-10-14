@@ -231,3 +231,5 @@ extern	Handle					gPFBufferHandle;
 extern	uint8_t					*gRowDitherStrides;			// for dithering filter
 extern	const char				*gRendererName;
 extern	Boolean					gCanDoHQStretch;
+
+extern Boolean gAbortGameFlag;

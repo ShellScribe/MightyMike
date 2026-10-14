@@ -3,6 +3,7 @@
 #include "myglobals.h"
 #include "externs.h"
 #include "coop.h"
+#include "coopcontrols.h"
 #include "myguy.h"
 #include "myguy2.h"
 #include "object.h"
@@ -67,6 +68,7 @@ static void RestorePlayerOne(void)
 void CoopInitGame(void)
 {
  gCoopReady = gHavePlayers = false;
+ if (gCoopEnabled) CoopRequireReady();
  gCoopActivePlayer = -1;
  SDL_memset(gCoopPlayers, 0, sizeof(gCoopPlayers));
  SetInputPlayer(-1);
@@ -105,6 +107,7 @@ void CoopInitArea(void)
  }
  else gCoopPlayers[1].gMyHealth = gMyMaxHealth;
  gHavePlayers = gCoopReady = true;
+ CoopRequireReady();
  RestorePlayerOne();
 }
 void CoopBeginObject(ObjNode* node)

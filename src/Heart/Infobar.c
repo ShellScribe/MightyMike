@@ -23,6 +23,7 @@
 #include "structures.h"
 #include "externs.h"
 #include "coop.h"
+#include "coopcontrols.h"
 
 /****************************/
 /*    CONSTANTS             */
@@ -588,6 +589,7 @@ const int	quitY = gGamePrefs.pfSize == PFSIZE_SMALL ? 220 : ((VISIBLE_HEIGHT-64)
 	while (!GetNewNeedState(kNeed_UIConfirm))
 	{
 		UpdateInput();
+		if (gCoopEnabled) { CoopControllerGate(); if (gAbortGameFlag) { selection = 0; break; } }
 		
 		RegulateSpeed2(1);
 		if (!mode)

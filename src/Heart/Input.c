@@ -20,6 +20,7 @@
 #include "structures.h"
 #include "externs.h"
 #include "coop.h"
+#include "coopcontrols.h"
 
 /**********************/
 /*     PROTOTYPES     */
@@ -37,6 +38,7 @@ PlayerInput gPlayerInputs[2];
 static SDL_Gamepad* gSecondGamepad;
 static Byte gSecondNeedStates[NUM_CONTROL_NEEDS];
 static int gInputPlayer = -1;
+static bool gCoopInputBlocked[2];
 static int32_t ReadStickMagnitude(SDL_Gamepad* pad);
 static short ReadStickAim(SDL_Gamepad* pad);
 void SetInputPlayer(int player) { gInputPlayer = player; }
@@ -156,10 +158,12 @@ void UpdateInput(void)
 			SDL_snprintf(gTextInput, sizeof(gTextInput), "%s", event.text.text);
 			break;
 
+		case SDL_EVENT_JOYSTICK_ADDED:
 		case SDL_EVENT_GAMEPAD_ADDED:
 			TryOpenGamepad(false);
 			break;
 
+		case SDL_EVENT_JOYSTICK_REMOVED:
 		case SDL_EVENT_GAMEPAD_REMOVED:
 			OnJoystickRemoved(event.gdevice.which);
 			break;
@@ -170,6 +174,8 @@ void UpdateInput(void)
 			break;
 		}
 	}
+
+	if (gCoopEnabled) TryOpenGamepad(false);
 
 	// --------------------------------------------
 	// Update raw keyboard state
@@ -206,6 +212,12 @@ void UpdateInput(void)
 	// --------------------------------------------
 	// Update needs
 
+	for (int p = 0; gCoopEnabled && p < 2; p++)
+	{
+		bool active = CoopReadAim(p) != AIM_NONE;
+		for (int n = 0; n < NUM_CONTROL_NEEDS; n++) active |= CoopReadNeed(p,n);
+		if (!active) gCoopInputBlocked[p] = false;
+	}
 	for (int i = 0; i < NUM_CONTROL_NEEDS; i++)
 	{
 		const KeyBinding* kb = &gGamePrefs.keys[i];
@@ -234,7 +246,11 @@ void UpdateInput(void)
 				break;
 		}
 
-		if (gSDLGamepad)
+		if (gCoopEnabled)
+		{
+			downNow |= !gCoopInputBlocked[0] && CoopReadNeed(0,i);
+		}
+		else if (gSDLGamepad)
 		{
 			int16_t deadZone = i >= NUM_REMAPPABLE_NEEDS
 								? kJoystickDeadZone_UI
@@ -263,7 +279,7 @@ void UpdateInput(void)
 		}
 
 		UpdateKeyState(&gNeedStates[i], downNow);
-		UpdateKeyState(&gSecondNeedStates[i], ReadGamepadNeed(gSecondGamepad, i));
+		UpdateKeyState(&gSecondNeedStates[i], (gCoopEnabled ? !gCoopInputBlocked[1] && CoopReadNeed(1,i) : ReadGamepadNeed(gSecondGamepad, i)));
 		gPlayerInputs[0].held[i] = (gNeedStates[i] & KEYSTATE_ACTIVE_BIT) != 0;
 		gPlayerInputs[0].pressed[i] = gNeedStates[i] == KEYSTATE_DOWN;
 		gPlayerInputs[1].held[i] = (gSecondNeedStates[i] & KEYSTATE_ACTIVE_BIT) != 0;
@@ -271,17 +287,21 @@ void UpdateInput(void)
 	}
 	for (int p = 0; p < 2; p++)
 	{
-		gPlayerInputs[p].moveMagnitude = ReadStickMagnitude(GetPlayerGamepad(p));
-		gPlayerInputs[p].aim = ReadStickAim(GetPlayerGamepad(p));
+		gPlayerInputs[p].moveMagnitude = gCoopEnabled
+			? (gPlayerInputs[p].held[kNeed_Up] || gPlayerInputs[p].held[kNeed_Down] || gPlayerInputs[p].held[kNeed_Left] || gPlayerInputs[p].held[kNeed_Right] ? 0x10000 : 0)
+			: ReadStickMagnitude(GetPlayerGamepad(p));
+		gPlayerInputs[p].aim = gCoopEnabled ? (gCoopInputBlocked[p] ? AIM_NONE : CoopReadAim(p)) : ReadStickAim(GetPlayerGamepad(p));
 	}
 }
 
 void ClearInput(void)
 {
-	SDL_memset(gRawKeyboardState, KEYSTATE_HELD, sizeof(gRawKeyboardState));
-	SDL_memset(gNeedStates, KEYSTATE_HELD, sizeof(gNeedStates));
-	SDL_memset(gSecondNeedStates, KEYSTATE_HELD, sizeof(gSecondNeedStates));
+	SDL_memset(gRawKeyboardState, gCoopEnabled ? KEYSTATE_IGNOREHELD : KEYSTATE_HELD, sizeof(gRawKeyboardState));
+	SDL_memset(gNeedStates, gCoopEnabled ? KEYSTATE_IGNOREHELD : KEYSTATE_HELD, sizeof(gNeedStates));
+	SDL_memset(gSecondNeedStates, gCoopEnabled ? KEYSTATE_IGNOREHELD : KEYSTATE_HELD, sizeof(gSecondNeedStates));
 	SDL_memset(gPlayerInputs, 0, sizeof(gPlayerInputs));
+	gPlayerInputs[0].aim = gPlayerInputs[1].aim = AIM_NONE;
+	gCoopInputBlocked[0] = gCoopInputBlocked[1] = gCoopEnabled;
 //	ClearMouseState();
 //	EatMouseEvents();
 }
@@ -378,6 +398,24 @@ bool IsCmdQPressed(void)
 SDL_Gamepad* TryOpenGamepad(bool showMessage)
 {
  (void) showMessage;
+ if (gCoopEnabled)
+ {
+  CoopSyncControllers();
+  for (int p = 0; p < 2; p++)
+  {
+   SDL_Gamepad** slot = p == 0 ? &gSDLGamepad : &gSecondGamepad;
+   SDL_JoystickID id = CoopControllerID(p);
+   if (*slot && SDL_GetGamepadID(*slot) != id)
+   {
+    SDL_CloseGamepad(*slot); *slot = NULL;
+    if (p == 0 && gSDLHaptic) { SDL_CloseHaptic(gSDLHaptic); gSDLHaptic = NULL; }
+    SDL_memset(p == 0 ? gNeedStates : gSecondNeedStates, KEYSTATE_IGNOREHELD, NUM_CONTROL_NEEDS);
+    gCoopInputBlocked[p] = true;
+   }
+   if (!*slot && id && SDL_IsGamepad(id)) *slot = SDL_OpenGamepad(id);
+  }
+  return gSDLGamepad;
+ }
  int count = 0;
  SDL_JoystickID* ids = SDL_GetGamepads(&count);
  for (int i = 0; i < count; i++)
@@ -395,6 +433,7 @@ SDL_Gamepad* TryOpenGamepad(bool showMessage)
 
 static void OnJoystickRemoved(SDL_JoystickID which)
 {
+ if (gCoopEnabled) { TryOpenGamepad(false); return; }
  for (int p = 0; p < 2; p++)
  {
   SDL_Gamepad** slot = p == 0 ? &gSDLGamepad : &gSecondGamepad;

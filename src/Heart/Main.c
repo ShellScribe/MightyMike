@@ -30,6 +30,7 @@
 #include "version.h"
 #include "externs.h"
 #include "coop.h"
+#include "coopcontrols.h"
 #include "framebufferfilter.h"
 #include <SDL3/SDL.h>
 
@@ -192,6 +193,7 @@ void InitArea(void)
 	CountBunnies();
 	LoadCurrentPlayer(false);									// load current player's info (for 2 player mode)
 	CoopInitArea();
+	if (gCoopEnabled) LoadShapeTable(":Shapes:highscore.shapes", GROUP_WIN);
 	InitPlayfield();											// must init playfield *after* InitMe!
 	EraseStore();												// (sets up interlace fill)
 	PutPlayerSignal(true);										// put p1 or p2 message
@@ -271,6 +273,7 @@ static void UpdateSimAndRenderFixedFrame(void)
 
 	UpdateShakeyScreen();
 	ReadKeyboard();
+	if (!CoopControllerGate()) return;
 	MoveObjects();
 	SortObjectsByY();										// sort 'em
 	ScrollPlayfield();										// do playfield updating
@@ -318,6 +321,7 @@ static void UpdateSimAndRenderTweenedFrames(void)
 
 	UpdateShakeyScreen();
 	ReadKeyboard();
+	if (!CoopControllerGate()) return;
 	MoveObjects();
 	SortObjectsByY();										// sort 'em
 	UpdateTileAnimation();
@@ -364,6 +368,8 @@ void PlayArea(void)
 	MyRandomLong();
 
 	gIsInGame = true;
+	if (gCoopEnabled) { UpdateInput(); CoopControllerGate(); }
+	if (gAbortGameFlag) { gIsInGame = false; return; }
 
 	gTimeSinceSim = GAME_SPEED_SDL;						// force simulation to run once when we enter this function
 
