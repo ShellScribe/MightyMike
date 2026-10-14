@@ -28,6 +28,7 @@
 #include "input.h"
 #include "externs.h"
 #include "coop.h"
+#include "coopcontrols.h"
 #include "tga.h"
 
 /****************************/
@@ -288,6 +289,9 @@ void DisplayBunnyRadar(void)
 int			width,height;
 short		xDist,yDist;
 
+long radarX=gMyX, radarY=gMyY;
+	if (gCoopEnabled && gCoopReady) CoopCameraCenter(&radarX,&radarY);
+
 const int	radarCenterX = gGamePrefs.pfSize == PFSIZE_SMALL ? RADAR_CENTER_X : (VISIBLE_WIDTH/2);
 const int	radarCenterY = gGamePrefs.pfSize == PFSIZE_SMALL ? RADAR_CENTER_Y : ((VISIBLE_HEIGHT-64)/2);
 
@@ -316,8 +320,8 @@ const int	radarCenterY = gGamePrefs.pfSize == PFSIZE_SMALL ? RADAR_CENTER_Y : ((
 	{
 		if ((gMasterItemList[i].type & (ITEM_MEMORY|ITEM_NUM)) == BUNNY_MAP_ID)		// if memory bits set, then was deleted
 		{
-			xDist = (gMasterItemList[i].x - gMyX)/RADAR_RANGE;
-			yDist = (gMasterItemList[i].y - gMyY)/RADAR_RANGE;
+			xDist = (gMasterItemList[i].x - radarX)/RADAR_RANGE;
+			yDist = (gMasterItemList[i].y - radarY)/RADAR_RANGE;
 
 			if ((Absolute(xDist) < 180) && (Absolute(yDist) < 172))				// draw if on radar screen
 			{
@@ -328,6 +332,8 @@ const int	radarCenterY = gGamePrefs.pfSize == PFSIZE_SMALL ? RADAR_CENTER_Y : ((
 	}
 
 
+	bool wasPaused = gIsGamePaused;
+	gIsGamePaused = true;
 	UpdateInput();														// eat keypress
 	
 	while (!UserWantsOut() && !GetNewNeedState(kNeed_Radar))			// wait for spacebar
@@ -335,8 +341,11 @@ const int	radarCenterY = gGamePrefs.pfSize == PFSIZE_SMALL ? RADAR_CENTER_Y : ((
 		PresentIndexedFramebuffer();
 		SDL_Delay(33);													// don't cook CPU too much
 		UpdateInput();
+		if (!CoopControllerGate()) break;
 	}
 
+	gIsGamePaused = wasPaused;
+	ClearInput();
 	UpdateInput();														// eat keypress
 
 	EraseStore();

@@ -310,7 +310,7 @@ static	void(*myMoveTable[])(void) =
 		}
 	}
 
-	if (gEnemyFreezeTimer && (!gCoopEnabled || gCoopActivePlayer == 0))								// update enemy freeze timer
+	if (gEnemyFreezeTimer && !gCoopEnabled)								// update enemy freeze timer
 		gEnemyFreezeTimer--;
 
 	if (gTeleportingFlag)								// lock me while teleporting
@@ -531,7 +531,9 @@ void MoveMe_Liftoff(void)
 		gThisNodePtr->YOffset.L -= 0x30000L;				// move it up
 
 		if (gThisNodePtr->YOffset.Int < -340)				// see if off screen
-			gFinishedArea = true;							// end level
+			gFinishedArea = !gCoopEnabled ||
+				(gCoopPlayers[0].gMyNodePtr->YOffset.Int < -340 &&
+				 gCoopPlayers[1].gMyNodePtr->YOffset.Int < -340); // both must finish
 	}
 }
 

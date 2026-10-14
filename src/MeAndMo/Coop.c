@@ -92,10 +92,12 @@ void CoopInitArea(void)
  gMyNodePtr->CoopOwner = 1;
  SavePlayer(0);
  gCoopPlayers[0].doneDead = false;
+ gCoopPlayers[0].revivedTicks = 0;
  InitMe();
  gMyNodePtr->CoopOwner = 2;
  SavePlayer(1);
  gCoopPlayers[1].doneDead = false;
+ gCoopPlayers[1].revivedTicks = 0;
  if (gHavePlayers)
  {
   gCoopPlayers[1].gMyHealth = previous.gMyHealth < 0 ? previous.gMyMaxHealth : previous.gMyHealth;
@@ -180,6 +182,7 @@ static void RevivePlayer(int p, int partner)
  gMyDX = gMyDY = 0;
  gMyMode = MY_MODE_BASICSTAND;
  gCoopPlayers[p].doneDead = false;
+ gCoopPlayers[p].revivedTicks = GAME_FPS * 2;
  CalcObjectBox2(gMyNodePtr);
  SavePlayer(p);
  RestorePlayerOne();
@@ -187,26 +190,35 @@ static void RevivePlayer(int p, int partner)
 void CoopEndFrame(void)
 {
  if (!gCoopEnabled || !gCoopReady || !gIsInGame) return;
+ if (gEnemyFreezeTimer > 0) gEnemyFreezeTimer--;
  SavePlayer(0);
+ for (int p = 0; p < 2; p++) if (gCoopPlayers[p].revivedTicks > 0) gCoopPlayers[p].revivedTicks--;
  // A teleport takes the team together. Rebuild camera tiles at destination
  // rather than tethering a player to a partner left on the previous island.
  for (int p = 0; p < 2; p++)
  {
   if (!gCoopPlayers[p].gTeleportingFlag) continue;
-  int other = p ^ 1;
   ObjNode* from = gCoopPlayers[p].gMyNodePtr;
-  ObjNode* to = gCoopPlayers[other].gMyNodePtr;
-  to->X = to->OldX = from->X;
-  to->Y = to->OldY = from->Y;
-  to->DX = to->DY = 0;
-  gCoopPlayers[other].gMyX = from->X.Int;
-  gCoopPlayers[other].gMyY = from->Y.Int;
+  long destX = from->X.Int, destY = from->Y.Int;
   for (int i = 0; i < 2; i++)
   {
-   gCoopPlayers[i].gTeleportingFlag = false;
-   gCoopPlayers[i].gMyBlinkieTimer = GAME_FPS * 2;
-   gCoopPlayers[i].gLastNonDeathX = from->X.Int;
-   gCoopPlayers[i].gLastNonDeathY = from->Y.Int;
+   PlayerState* s = &gCoopPlayers[i];
+   ObjNode* avatars[2] = {s->gMyNodePtr, s->gRealMePtr};
+   for (int n = 0; n < 2; n++)
+   {
+    ObjNode* avatar = avatars[n];
+    if (!avatar) continue;
+    avatar->X = avatar->OldX = from->X;
+    avatar->Y = avatar->OldY = from->Y;
+    avatar->DX = avatar->DY = 0;
+    avatar->MPlatform = NULL;
+    CalcObjectBox2(avatar);
+   }
+   s->gMyX = s->gLastNonDeathX = destX;
+   s->gMyY = s->gLastNonDeathY = destY;
+   s->gMyDX = s->gMyDY = s->gMySumDX = s->gMySumDY = 0;
+   s->gTeleportingFlag = false;
+   s->gMyBlinkieTimer = GAME_FPS * 2;
   }
   RestorePlayerOne();
   InitPlayfield();
@@ -281,37 +293,50 @@ static void Label(int x, int y, int p, Byte color)
 void CoopDrawOverlay(void)
 {
  if (!gCoopEnabled || !gCoopReady || !gIsInGame || gIsGamePaused) return;
- Byte white = 0, dark = 0;
- unsigned long brightest = 0, darkest = ~0UL;
- for (int i = 0; i < 255; i++)
- {
-  RGBColor c = gGamePalette.baseColors[i];
-  unsigned long light = (unsigned long)c.red + c.green + c.blue;
-  if (light > brightest) { brightest = light; white = i; }
-  if (light < darkest) { darkest = light; dark = i; }
- }
+ Byte white, dark;
+ CoopPaletteColors(&white,&dark);
+ int panelWidth = SDL_min((PF_WINDOW_WIDTH-24)/2,200);
  for (int p = 0; p < 2; p++)
  {
   const PlayerState* s = &gCoopPlayers[p];
-  int x = PF_WINDOW_LEFT + 12 + p * 140;
+  int x = PF_WINDOW_LEFT + 12 + p * panelWidth;
   int y = PF_WINDOW_TOP + 8;
-  Box(x-3, y-3, 125, 16, dark);
+  Box(x-3, y-3, panelWidth-4, 40, dark);
   Label(x, y, p, white);
   for (int h = 0; h < s->gMyMaxHealth; h++)
   {
-   Box(x+22+h*14, y, 11, 10, white);
-   if (h >= s->gMyHealth || IsDead(p)) Box(x+23+h*14, y+1, 9, 8, dark);
+   Box(x+22+h*9, y, 7, 10, white);
+   if (h >= s->gMyHealth || IsDead(p)) Box(x+23+h*9, y+1, 5, 8, dark);
   }
+  if (s->gCurrentWeaponType != NO_WEAPON)
+  {
+   // Fit the existing weapon artwork into a 24px thumbnail.
+   const uint8_t* pixels;
+   const FrameHeader* icon = GetFrameHeader(GroupNum_WeaponIcon,ObjType_WeaponIcon,s->gCurrentWeaponType,&pixels,NULL);
+   for (int j=0;j<24;j++) for (int i=0;i<24;i++)
+    Box(x+96+i,y+j,1,1,pixels[(j*icon->height/24)*icon->width+i*icon->width/24]);
+   char ammo[16];
+   SDL_snprintf(ammo,sizeof(ammo),"%ld",(long)s->weapons[s->gCurrentWeaponIndex].life);
+   CoopDrawText(x+124,y+4,ammo,white);
+  }
+  else CoopDrawText(x+96,y+4,"empty",white);
+  const char* status = IsDead(p) ? (gNumLives > 1 ? "reviving" : "fallen") : s->revivedTicks ? "revived" : "";
+  CoopDrawText(x+22,y+22,status,white);
   ObjNode* node = s->gMyNodePtr;
   int32_t spriteX, spriteY;
   TweenObjectPosition(node, &spriteX, &spriteY);
   const FrameHeader* frame = GetFrameHeader(node->SpriteGroupNum, node->Type, node->CurrentFrame, NULL, NULL);
   int markerX = PF_WINDOW_LEFT + spriteX - gTweenedScrollX + (p ? 8 : -24);
   int markerY = PF_WINDOW_TOP + spriteY - gTweenedScrollY + frame->y - 13;
-  if (node->DrawFlag && !IsDead(p) && markerY >= PF_WINDOW_TOP + 25)
+  if (node->DrawFlag && !IsDead(p) && markerY >= PF_WINDOW_TOP + 67)
   {
    Box(markerX-1, markerY-1, 17, 12, dark);
    Label(markerX, markerY, p, white);
   }
  }
+ char lives[40];
+ SDL_snprintf(lives,sizeof(lives),"shared spares: %d",gNumLives > 0 ? gNumLives-1 : 0);
+ int x = PF_WINDOW_LEFT+12, y = PF_WINDOW_TOP+48;
+ Box(x-3,y-2,190,16,dark);
+ CoopDrawText(x,y,lives,white);
 }

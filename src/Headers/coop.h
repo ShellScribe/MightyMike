@@ -52,6 +52,7 @@ typedef struct PlayerState
 #undef FIELD
  WeaponType weapons[MAX_WEAPONS];
  bool doneDead;
+ int revivedTicks;
 } PlayerState;
 extern bool gCoopEnabled;
 extern bool gCoopReady;
@@ -70,6 +71,8 @@ void CoopCameraCenter(long* x, long* y);
 
 #ifdef COOP_SMOKE_TESTS
 extern bool gRunCoopSmokeTests;
+extern bool gRunCoopSetupSmoke;
+void CoopSetupSmokeInput(void);
 void CoopAttachTestControllers(void);
 void CoopRunSmokeTests(void);
 #endif

@@ -129,7 +129,7 @@ static	void(*myMoveTable[])(void) =
 		return;
 	}
 
-	if (gEnemyFreezeTimer && (!gCoopEnabled || gCoopActivePlayer == 0))								// update enemy freeze timer
+	if (gEnemyFreezeTimer && !gCoopEnabled)								// update enemy freeze timer
 		gEnemyFreezeTimer--;
 
 	if (gTeleportingFlag)								// lock me while teleporting
@@ -297,7 +297,7 @@ void MoveMeSpaceShip(void)
 		return;
 	}
 
-	if (gEnemyFreezeTimer && (!gCoopEnabled || gCoopActivePlayer == 0))								// update enemy freeze timer
+	if (gEnemyFreezeTimer && !gCoopEnabled)								// update enemy freeze timer
 		gEnemyFreezeTimer--;
 
 	if (gTeleportingFlag)								// lock me while teleporting

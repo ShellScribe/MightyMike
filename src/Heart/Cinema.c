@@ -1691,6 +1691,9 @@ short	selection;
 			vtab += 13;
 		}
 
+		if (gCoopEnabled && i == 200 && gCoopPlayers[1].gMyMaxHealth < MAX_HEARTS)
+			gCoopPlayers[1].gMyMaxHealth++;
+
 		if (i == 200)											// see if get another heart
 		{
 			if (gMyMaxHealth < MAX_HEARTS)
