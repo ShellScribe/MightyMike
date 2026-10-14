@@ -1,4 +1,4 @@
-# Couch co-op V1
+# Couch co-op continuation
 
 ## Launch
 
@@ -12,8 +12,9 @@ macOS, or run the executable with `--coop`:
 On Windows/Linux, run `MightyMike.exe --coop` / `./MightyMike --coop`.
 Co-op starts a fresh campaign directly, skipping the title/player-selection
 menus. Without `--coop`, the original menus, single-player, and alternating
-two-player game remain available. This build is a candidate for human playtesting;
-it has not been accepted by two people using physical controllers.
+two-player game remain available. This continuation retains the zero-spare survivor fix. Automated checks and
+owner-reported play are recorded separately in `tests/RESULTS.md`. Physical
+acceptance of the continuation is still pending.
 
 ## Controls and rules
 
@@ -22,13 +23,15 @@ it has not been accepted by two people using physical controllers.
   suction cups; automatic weapons fire while held, matching the original game.
 - Shoulder buttons: previous/next weapon. East face button also selects next.
 - North face button or Back: bunny radar. Start: pause/quit dialog.
-- First controller detected owns P1; second owns P2. A connected controller
-  retains its slot when its partner disconnects; reconnect fills the vacant slot.
-  P1 also accepts the normal keyboard/mouse controls.
-- P1/P2 labels identify Pete. The upper-left overlay shows separate health bars.
-  Weapons/ammo and power-ups belong to the player who collects them. The original
-  weapon icon/ammo display shows **P1's** inventory; P2's weapon is visible when
-  firing but has no inventory HUD in V1.
+- Two distinct devices are required. The first two detected devices are initially
+  assigned P1/P2. Setup shows their names; selecting a device row cycles available
+  devices, or swaps the two assignments. A disconnect never migrates the other
+  controller into the missing player's slot. Reconnection/reassignment requires
+  readiness before simulation resumes. P1 retains keyboard/mouse support.
+- Each player has separate co-op bindings, independent of single-player settings.
+  The compact top overlay shows separate health, selected weapon artwork, ammo,
+  `fallen`/`reviving`/`revived` status, and shared spare lives. The legacy border
+  still shows P1's weapon. A fallen player with no spare rejoins next level.
 - Bunnies, keys, coins, score and spare lives are shared. Either player can collect
   the final bunny; both perform the exit animation.
 - While both players are alive, the camera follows their midpoint and a movement
@@ -41,6 +44,55 @@ it has not been accepted by two people using physical controllers.
   Finishing a level brings a fallen partner into the next level.
 - Co-op saving/loading is disabled and the bonus save selection is skipped.
   Existing single-player save files are not overwritten by a co-op run.
+
+## Controller setup and calibration
+
+The first gameplay frame of each level waits in setup. Both players press their
+assigned **pause** control to mark ready, then select **save and resume**. Enemies
+and all gameplay timers remain frozen. During play, either player's pause control
+or keyboard **F1** opens setup. Disconnection opens it automatically before the
+next simulation step; held inputs are cleared and must be released before rearming.
+Setup also remains accessible from the radar and the original quit dialog via F1.
+
+Use keyboard arrows to select a row and Enter to activate it. Configured movement
+controls navigate, and shooting confirms. Device rows cycle/swap assignments.
+`configure P1/P2 all controls` walks through movement, four aim directions,
+shooting, previous/next weapon, radar, and pause. The two individual binding rows
+show the primary binding; Left/Right select an action and Enter remaps only it.
+Default mapped gamepads retain two alternatives for several actions; capturing
+an action replaces both alternatives with the captured input.
+
+For an unfamiliar or unmapped controller, use the keyboard for initial setup:
+
+1. Select its player and start configuration. Release buttons, center sticks,
+   leave triggers at rest, then press Enter to measure neutral for that action.
+2. Press the intended button, move one stick axis fully, or press one hat/D-pad
+   direction. The screen displays the actual raw button/axis/hat number and axis
+   polarity/rest value. Release the control and press Enter to confirm it.
+3. Backspace retries capture; Escape cancels the entire all-controls wizard and
+   restores its previous bindings. Space leaves an action unbound. Separate aim
+   directions are optional; movement direction aims when no aim input is held.
+   Movement, shoot, both weapon selectors, radar, and pause must be bound to start.
+4. For N64-style controllers, capture the four C buttons as aim up/down/left/right.
+   Two aim buttons together aim diagonally. No N64 button numbering is assumed.
+5. Both players press their captured pause buttons, then save and resume.
+
+Axis activation uses a one-third-range threshold relative to the captured neutral
+value; this handles asymmetric triggers and modest stick drift. Defaults rely on
+SDL's existing gamepad mapping. Unmapped devices start unbound and never receive
+an inferred layout or an automatically generated SDL database entry. No terminal
+commands or database editing are needed for calibration. A device not exposed by
+SDL at all still needs its OS connection/driver resolved.
+
+Reset restores SDL gamepad defaults for mapped devices, or clears an unmapped
+profile for recapture. **Cancel changes** restores the setup entry's bindings and
+still-connected assignments. It cannot bypass the missing-device/readiness gate.
+**Save and resume** persists a versioned co-op file in SDL's standard user
+preferences directory (`Pangea Software/MightyMike/coop-controls-v1.txt`), separate
+from legacy preferences. The last device GUID and bindings are retained for each
+player; a different device starts with its own defaults/capture. This is two
+last-used profiles, not a library of every controller previously connected.
+
 
 ## Build
 
@@ -102,18 +154,18 @@ must be added to this adapter/ownership tagging. It is an interim compatibility
 layer rather than an engine-wide conversion. Nearby AI targeting is deliberately
 simple. The existing shared object/projectile limits still apply.
 
-Deferred/unverified: physical-controller feel, audible audio, full campaign
-playthrough (particularly frog/ship transformations, moving platforms and
-teleporters), P2 inventory HUD, co-op saves, and polished join/rebind menus.
-The first-level vertical slice and next-level setup receive automated coverage;
-full campaign support is available in the code but is not claimed validated.
+Automated coverage includes all 15 area initializations, simultaneous frog/ship
+ownership and disposal, a real teleporter trigger plus transformed warp completion,
+platform carry, shared bonus rewards, both exit animations, and next-level setup.
+These are controlled regression checks, not a full campaign traversal. Physical
+controller feel, audible audio, long map traversal, complete platform paths, and
+a full two-person campaign remain pending. Co-op saves remain unsupported.
 No networking, split-screen, new artwork, or broader engine rewrite.
 
 ## Playtest follow-ups
 
-- Add an in-game screen to assign and map both controllers independently.
-  Include calibration and controls for controllers without a right stick.
-  This is noted for a later increment, not implemented in V1.
+- The continuation implements assignment, independent capture/calibration,
+  button aiming, readiness/reconnection, and P2 inventory display.
 - Owner reported basic play working with Switch Pro + N64, then P2 confined
   after P1 died. Reproduced a dead-partner tether defect and changed camera/
   tether rules for a sole survivor. Physical confirmation of that fix remains

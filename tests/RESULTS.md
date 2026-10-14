@@ -75,3 +75,73 @@ No claim of physical-controller, audible audio or full-campaign acceptance.
   worked normally until that point. This matches the reproduced dead-partner
   tether failure. Physical confirmation of the rebuilt fix remains pending.
 - Follow-up noted: in-game assignment and mapping for both controllers.
+
+## Continuation validation — 2026-10-14
+
+Branch: `feature/couch-coop-complete`, continued from local `cbcaef8` with
+`906e7f3` retained. Published `feature/couch-coop-v1-initial` was verified at
+`14b670c53a9dddf8c06573d91f225ca93e5b6d49` before the continuation push.
+
+Automated results (real SDL virtual devices, dummy audio):
+
+- Final expanded `--coop-smoke`: exit 0; retained in
+  `tests/continuation-smoke.log`. Earlier combat/movement/revival checks still pass.
+- Independent captured shooting, button/diagonal aiming, unchanged legacy
+  bindings, held-input suppression/rearming, and profile save/load round trip.
+  Smoke profiles use an isolated temporary test file, not the owner's controls.
+- An actual SDL **unmapped joystick** fixture works without an SDL database
+  mapping: raw axis/hat movement, button aim, shooting, radar and pause; a missing
+  or unconfigured device keeps the readiness gate closed. Its removal clears
+  shooting/aim snapshots and preserves the other player's controller identity.
+- Actual death animations with zero shared spares tested for **either** player:
+  permanent death leaves a moving survivor, camera follows the survivor, the
+  dead-partner tether is released, and the shared enemy-freeze timer still ticks.
+  A subsequently available spare revives the fallen player.
+- All **15 campaign area initializations** produce two owned avatars/objectives.
+  Simultaneous frog/ship conversion, three simulation steps, hidden-avatar
+  separation, warp completion, and disposal tested in their three respective
+  world areas. These checks do not traverse all maps.
+- A real map-backed teleporter trigger moves the team; collision boxes and
+  momentum are immediately synchronized. Separate transformed-warp checks cover
+  hidden Pete positions. A real platform sprite fixture tests the carry/collision
+  routine for both Petes with a controlled location/delta; full path traversal
+  remains a physical check.
+- Final bunny pickup by P2, both real exit animations, the real bonus screen
+  (including 201 shared coins), shared score and **both** max-health rewards,
+  skipped co-op save prompt, subsequent level initialization, and team game-over.
+- Original single-player startup/movement and original alternating-player mode
+  initialization still pass. Complete alternating turns/menu play remain manual.
+
+Native setup UI verification with `--coop-setup-smoke`:
+
+- Keyboard navigation, actual virtual axis/button capture with displayed raw
+  input identity, Backspace retry, wizard cancel, distinct device swap and swap
+  back, and separate readiness indicators were exercised through the native UI.
+- Final screen visually inspected after font/selection improvements. Final UI
+  run exits 0, asserting unchanged simulation frame count/health while setup is
+  open and requiring both players ready before return. This is virtual input,
+  not physical controller acceptance.
+- Test-only F5/F6 drive the two virtual Start buttons; F7 drives virtual P1 shoot;
+  F8 drives its raw X axis. These hooks are absent from release builds.
+
+Delivery: release app rebuilt with smoke code disabled, Apple Silicon arm64,
+macOS 14+, embedded game assets and SDL framework. Only the inherited linker
+common-section alignment warning remains. `git diff --check` passed.
+
+Owner-reported physical evidence remains the earlier Switch Pro/N64 basic play
+report above. The continuation's calibration, disconnect/reconnect behavior,
+button aiming, audible playback, and zero-spare fix still require physical
+confirmation. A complete two-person campaign is not claimed accepted.
+
+Focused physical checklist:
+
+1. Verify the two device names/assignments, capture N64 movement and C-button
+   aiming without guessing button numbers, and test reset/cancel/save/relaunch.
+2. Verify both readiness gates; unplug either controller while moving/firing.
+   Confirm enemies pause, the other assignment stays put, and reconnection plus
+   readiness resumes without stale movement or firing.
+3. Verify both HUD inventories after pickups/damage. Test zero-spare permanent
+   death and survivor freedom for P1 and P2.
+4. Traverse actual teleporter destinations/platform paths, transformations,
+   final-bunny exits, bonus screens and subsequent levels together. Check audio.
+5. Launch without `--coop` and play single-player and alternating turns normally.

@@ -1,0 +1,167 @@
+2026-10-14 08:12:51.630 MightyMike[49030:988818] App name: Mighty Mike
+2026-10-14 08:12:51.631 MightyMike[49030:988818] App version: 3.0.3
+2026-10-14 08:12:51.631 MightyMike[49030:988818] App ID: io.jor.mightymike
+2026-10-14 08:12:51.631 MightyMike[49030:988818] SDL revision: release-3.2.2-0-g2fa1e7258 (libsdl.org)
+2026-10-14 08:12:52.313 MightyMike[49030:988818] Using special PPC renderer!
+2026-10-14 08:12:52.360 MightyMike[49030:988818] Max texture size: 16384
+PASS: test isolation (disconnect physical controllers for smoke tests)
+PASS: attach virtual SDL gamepad
+PASS: open virtual joystick
+PASS: attach virtual SDL gamepad
+PASS: open virtual joystick
+2026-10-14 08:12:52.390 MightyMike[49030:988818] Render thread pool: 8
+PASS: two independently assigned gamepads
+PASS: stable controller slots
+PASS: two real Pete objects
+PASS: clear test patch in first level
+PASS: startup requires readiness before the first enemy step
+PASS: one ready player cannot start the team
+PASS: both players unlock the readiness gate
+PASS: captured P2 shoot binding is independent of P1
+PASS: button aiming combines diagonals without a right stick
+PASS: held buttons and aim are suppressed after pause
+PASS: release rearms captured inputs
+PASS: co-op remapping leaves legacy single-player bindings unchanged
+PASS: co-op profiles save to isolated test preferences
+PASS: co-op binding file round trip preserves both profiles
+PASS: P2 can move beyond dead P1's tether
+PASS: camera follows the sole survivor
+PASS: P1 can move beyond dead P2's tether
+PASS: camera follows the sole survivor
+PASS: set virtual axis
+PASS: P1 moves while P2 remains still
+PASS: set virtual axis
+PASS: P2 moves while P1 remains still
+PASS: set virtual axis
+PASS: set virtual axis
+PASS: set virtual axis
+PASS: set virtual axis
+PASS: independent simultaneous aiming
+PASS: both fire with separate ammo
+PASS: real projectiles retain each shooter's direction
+PASS: real enemy available for combat check
+PASS: both players' projectiles damage the shared enemy
+PASS: open smoke screenshot
+PASS: player context restored after object updates
+PASS: damage leaves partner health intact
+PASS: death animation and partner revival consume one team spare
+PASS: survivor remains playable
+PASS: set virtual axis
+PASS: set virtual axis
+PASS: shared-camera tether bounds separation
+PASS: player visible in shared camera
+PASS: player visible in shared camera
+PASS: permanent death leaves the partner playable with zero spares
+PASS: P2 can move beyond dead P1's tether
+PASS: camera follows the sole survivor
+PASS: set virtual axis
+PASS: actual sole survivor moves after permanent death
+PASS: shared freeze timer advances with either sole survivor
+PASS: later shared spare revives the fallen player
+PASS: permanent death leaves the partner playable with zero spares
+PASS: P1 can move beyond dead P2's tether
+PASS: camera follows the sole survivor
+PASS: set virtual axis
+PASS: actual sole survivor moves after permanent death
+PASS: shared freeze timer advances with either sole survivor
+PASS: later shared spare revives the fallen player
+PASS: spawn final test objective
+PASS: objective references a real map item
+PASS: either player completes shared bunny objective
+PASS: both real liftoff animations complete level
+PASS: real bonus screen awards team points and both max-health upgrades without save prompt
+PASS: next level creates healthy players and fresh objectives
+PASS: game ends only when both die without a spare
+PASS: disconnect P1 keeps P2 assigned to P2
+PASS: reconnect fills vacant slot without reassigning partner
+PASS: campaign area loads two owned avatars and shared objectives
+PASS: campaign area loads two owned avatars and shared objectives
+PASS: campaign area loads two owned avatars and shared objectives
+PASS: campaign area loads two owned avatars and shared objectives
+PASS: real moving-platform sprite fixture
+PASS: same moving platform carries either Pete independently
+PASS: same moving platform carries either Pete independently
+PASS: campaign area loads two owned avatars and shared objectives
+PASS: campaign area loads two owned avatars and shared objectives
+PASS: campaign area loads two owned avatars and shared objectives
+PASS: transformed avatar retains its owner
+PASS: transformed avatar retains its owner
+PASS: simultaneous transformations retain independent hidden avatars
+PASS: simultaneous transformations retain independent hidden avatars
+PASS: transformed warp completion synchronizes hidden avatars
+PASS: transformed warp completion synchronizes hidden avatars
+PASS: transformation disposal restores the correct Pete
+PASS: transformation disposal restores the correct Pete
+PASS: campaign area loads two owned avatars and shared objectives
+PASS: transformed avatar retains its owner
+PASS: transformed avatar retains its owner
+PASS: simultaneous transformations retain independent hidden avatars
+PASS: simultaneous transformations retain independent hidden avatars
+PASS: transformed warp completion synchronizes hidden avatars
+PASS: transformed warp completion synchronizes hidden avatars
+PASS: transformation disposal restores the correct Pete
+PASS: transformation disposal restores the correct Pete
+PASS: campaign area loads two owned avatars and shared objectives
+PASS: transformed avatar retains its owner
+PASS: transformed avatar retains its owner
+PASS: simultaneous transformations retain independent hidden avatars
+PASS: simultaneous transformations retain independent hidden avatars
+PASS: transformed warp completion synchronizes hidden avatars
+PASS: transformed warp completion synchronizes hidden avatars
+PASS: transformation disposal restores the correct Pete
+PASS: transformation disposal restores the correct Pete
+PASS: campaign area loads two owned avatars and shared objectives
+PASS: create real campaign teleporter trigger
+PASS: P2 teleporter moves team and clears momentum
+PASS: teleported collision box is immediately current
+PASS: P2 teleporter moves team and clears momentum
+PASS: teleported collision box is immediately current
+PASS: campaign area loads two owned avatars and shared objectives
+PASS: campaign area loads two owned avatars and shared objectives
+PASS: campaign area loads two owned avatars and shared objectives
+PASS: ship fixture uses real campaign artwork
+PASS: transformed avatar retains its owner
+PASS: ship fixture uses real campaign artwork
+PASS: transformed avatar retains its owner
+PASS: simultaneous transformations retain independent hidden avatars
+PASS: simultaneous transformations retain independent hidden avatars
+PASS: transformed warp completion synchronizes hidden avatars
+PASS: transformed warp completion synchronizes hidden avatars
+PASS: transformation disposal restores the correct Pete
+PASS: transformation disposal restores the correct Pete
+PASS: campaign area loads two owned avatars and shared objectives
+PASS: ship fixture uses real campaign artwork
+PASS: transformed avatar retains its owner
+PASS: ship fixture uses real campaign artwork
+PASS: transformed avatar retains its owner
+PASS: simultaneous transformations retain independent hidden avatars
+PASS: simultaneous transformations retain independent hidden avatars
+PASS: transformed warp completion synchronizes hidden avatars
+PASS: transformed warp completion synchronizes hidden avatars
+PASS: transformation disposal restores the correct Pete
+PASS: transformation disposal restores the correct Pete
+PASS: campaign area loads two owned avatars and shared objectives
+PASS: ship fixture uses real campaign artwork
+PASS: transformed avatar retains its owner
+PASS: ship fixture uses real campaign artwork
+PASS: transformed avatar retains its owner
+PASS: simultaneous transformations retain independent hidden avatars
+PASS: simultaneous transformations retain independent hidden avatars
+PASS: transformed warp completion synchronizes hidden avatars
+PASS: transformed warp completion synchronizes hidden avatars
+PASS: transformation disposal restores the correct Pete
+PASS: transformation disposal restores the correct Pete
+PASS: campaign-specific teleport and platform checks executed
+PASS: unmapped raw joystick is available without a database mapping
+PASS: unmapped device assignment preserves survivor and requires calibration
+PASS: unmapped raw axis movement and N64-style button aiming
+PASS: unmapped shooting radar and pause use captured raw buttons
+PASS: captured hat movement is independent of axis movement
+PASS: calibrated raw device passes the ready gate
+PASS: raw disconnect clears stale input and pauses without moving the survivor
+PASS: another connected device can fill the vacant co-op slot
+PASS: original single-player starts with one Pete
+PASS: set virtual axis
+PASS: original single-player movement
+PASS: original alternating-player mode initializes one active Pete
+COOP SMOKE PASSED (SDL virtual controllers; human play unverified)
