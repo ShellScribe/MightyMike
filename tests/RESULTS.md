@@ -71,6 +71,7 @@ No claim of physical-controller, audible audio or full-campaign acceptance.
   `SDL_JOYSTICK_HIDAPI=0 SDL_JOYSTICK_IOKIT=0 SDL_JOYSTICK_MFI=0` and dummy audio
   to isolate its virtual devices. No system/controller settings changed.
 - Release app rebuilt successfully; only the existing linker alignment warning.
-- Exact owner death/respawn context and physical retest remain pending. If the
-  partner had already respawned, investigate the specific location separately.
+- Owner subsequently confirmed P1 stayed dead with zero lives and play had
+  worked normally until that point. This matches the reproduced dead-partner
+  tether failure. Physical confirmation of the rebuilt fix remains pending.
 - Follow-up noted: in-game assignment and mapping for both controllers.

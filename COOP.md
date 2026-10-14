@@ -117,4 +117,5 @@ No networking, split-screen, new artwork, or broader engine rewrite.
 - Owner reported basic play working with Switch Pro + N64, then P2 confined
   after P1 died. Reproduced a dead-partner tether defect and changed camera/
   tether rules for a sole survivor. Physical confirmation of that fix remains
-  pending; the precise playtest location/respawn situation has not been captured.
+  pending. Owner confirmed the lock began after P1 stayed dead with zero lives;
+  play had worked normally until then. The exact map location is not captured.
