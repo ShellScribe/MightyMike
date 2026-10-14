@@ -42,3 +42,15 @@ No claim of physical-controller, audible audio or full-campaign acceptance.
 6. Launch the app without `--coop`; check title/menu, original single-player and
    alternating two-player mode. If continuing through later worlds, check
    teleporters, moving platforms, frog and spaceship transformations.
+
+## Physical-controller setup — 2026-10-13
+
+- Switch Pro Controller detected by SDL3's built-in gamepad mapping.
+- USB GameSir G7 HE initially appeared only as an unmapped joystick. Added a
+  hardware-specific macOS mapping; SDL then recognized it as a gamepad.
+- Owner-generated raw input confirmed left stick axes 0/1, right stick axes 2/3,
+  right trigger axis 4, A=0, B=1, X=4, Y=3, LB=6, RB=7, View=10, Menu=11.
+  The X/Y assignment differs from the related G7 family mapping.
+- GameSir D-pad, left trigger, stick clicks and Guide remain unverified.
+- Physical gameplay acceptance is still pending; setup/calibration is not a
+  claim that movement, combat or level completion passed with physical devices.
